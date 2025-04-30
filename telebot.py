@@ -114,43 +114,43 @@ def handle(msg):
         parameter = comm[1]
 
     if chat_id == 13981480 and command == '/reboot':
-        bot.sendMessage(chat_id, 'Restarting RasPi, see you...')
+        send('Restarting RasPi, see you...')
         os.system('sudo reboot now')
 
     elif chat_id == 13981480 and command == '/vpn':
         status = vpn_check()
-        bot.sendMessage(chat_id, 'VPN service is: ' + status)
+        send('VPN service is: ' + status)
 
     elif chat_id == 13981480 and command == '/dlna':
         status = dlna_check()
-        bot.sendMessage(chat_id, 'MiniDLNA service is: ' + status)
+        send('MiniDLNA service is: ' + status)
 
     elif chat_id == 13981480 and command == '/temp':
         status = temp_check()
-        bot.sendMessage(chat_id, 'CPU temperature is: ' + status)
+        send('CPU temperature is: ' + status)
 
     elif chat_id == 13981480 and command == '/speed':
-        bot.sendMessage(chat_id, 'Speed test in progress. This may take 30 seconds...\n')
+        send('Speed test in progress. This may take 30 seconds...\n')
         status = speed_check()
         message = '- ' + status[0] + '\n' +\
                   '- ' + status[1] + '\n' +\
                   '- ' + status[2]
-        bot.sendMessage(chat_id, message)
+        send(message)
 
     elif chat_id == 13981480 and command == '/hdd':
         hdd1 = '/media/USBHDD1'
         hdd2 = '/media/USBHDD2'
         message = '- HDD1 unit is: ' + hdd_check(hdd1) + '\n' +\
                   '- HDD2 unit is: ' + hdd_check(hdd2)
-        bot.sendMessage(chat_id, message)
+        send(message)
 
     elif chat_id == 13981480 and command == '/reload':
-        bot.sendMessage(chat_id, 'Indexing DLNA content. Please wait few seconds...\n')
+        send('Indexing DLNA content. Please wait few seconds...\n')
         os.system('sudo service minidlna force-reload')
 
     elif chat_id == 13981480 and command == '/vpn_users':
         message = vpn_users()
-        bot.sendMessage(chat_id, message)
+        send(message)
 
     elif chat_id == 13981480 and command == '/vpn_info':
         if parameter == '':
@@ -164,7 +164,7 @@ def handle(msg):
                     '- Received data: ' + user_data[3] + '\n' +\
                     '- Sent data: ' + user_data[4] + '\n' +\
                     '- Last active: ' + user_data[5] + '\n'
-        bot.sendMessage(chat_id, message)
+        send(message)
 
     elif chat_id == 13981480 and command == '/weather':
         os.popen('python /home/pi/personalapp/raspiapp/weathertwit.py')
@@ -176,31 +176,31 @@ def handle(msg):
             message += f'*- {key}*: {crypto[key]:.2f} {stb}\n'
 
         message += f'*- Total: {sum(crypto.values()):.2f} {stb}*'
-        bot.sendMessage(chat_id, message, parse_mode = 'Markdown')
+        send(message, parse_mode = 'Markdown')
 
     elif chat_id == 13981480 and command == '/crypto_trade':
-        bot.sendMessage(chat_id, 'Getting latest market data. Please wait few seconds...\n')
+        send('Getting latest market data. Please wait few seconds...\n')
         trader.main()
 
     elif chat_id == 13981480 and command == '/crypto_markets':
         trade_config = load_trade_config()
         markets = trade_config.markets
         formatted_markets = "\n".join(f"{idx + 1}. {market}" for idx, market in enumerate(markets))
-        bot.sendMessage(chat_id, f"*Current markets:*\n{formatted_markets}", parse_mode = 'Markdown')
-        bot.sendMessage(chat_id, "*Do you want to change a market?* (yes/no)", parse_mode = 'Markdown')
+        send(f"*Current markets:*\n{formatted_markets}", parse_mode = 'Markdown')
+        send("*Do you want to change a market?* (yes/no)", parse_mode = 'Markdown')
         chat_state[chat_id] = 'ask_if_change'
 
     elif chat_id == 13981480 in chat_state:
         text = msg['text'].lower()
         if chat_state[chat_id] == 'ask_if_change':
             if text == 'yes':
-                bot.sendMessage(chat_id, "Enter the index of the market to replace and the new market (e.g., '2 XRPUSDT'):")
+                send("Enter the index of the market to replace and the new market (e.g., '2 XRPUSDT'):")
                 chat_state[chat_id] = 'process_market_change'
             elif text == 'no':
-                bot.sendMessage(chat_id, "No changes will be made. Thank you!")
+                send("No changes will be made. Thank you!")
                 del chat_state[chat_id]
             else:
-                bot.sendMessage(chat_id, "Invalid response. Please reply with 'yes' or 'no'.")
+                send("Invalid response. Please reply with 'yes' or 'no'.")
         
         elif chat_state[chat_id] == 'process_market_change':
             try:
@@ -219,15 +219,15 @@ def handle(msg):
                     update_markets(markets)
 
                     updated_markets = "\n".join(f"{idx + 1}. {market}" for idx, market in enumerate(markets))
-                    bot.sendMessage(chat_id, f"Replaced *{old_market}* with *{new_market}*.\n*Updated markets:*\n{updated_markets}", parse_mode = 'Markdown')
+                    send(f"Replaced *{old_market}* with *{new_market}*.\n*Updated markets:*\n{updated_markets}", parse_mode = 'Markdown')
                     del chat_state[chat_id]
                 else:
-                    bot.sendMessage(chat_id, "Invalid index. Please try again.")
+                    send("Invalid index. Please try again.")
             except Exception as e:
-                bot.sendMessage(chat_id, f"An error occurred: {str(e)}. Please try again.")
+                send(f"An error occurred: {str(e)}. Please try again.")
         
     elif chat_id == 13981480 and command == '/trader_log':
-        log_file = '/home/pi/raspitrader_cron.log'
+        log_file = '/home/pi/personalapp/raspiapp/crypto_trader/raspitrader_cron.log'
         if os.path.exists(log_file):
             # Read last 100 lines only
             with open(log_file, 'r') as f:
@@ -235,33 +235,73 @@ def handle(msg):
             temp_file = '/tmp/raspitrader_cron_last100.log'
             with open(temp_file, 'w') as f:
                 f.writelines(lines)
-            bot.sendMessage(chat_id, 'Sending last 100 lines of raspitrader_cron.log...')
+            send('Sending last 100 lines of raspitrader_cron.log...')
             bot.sendDocument(chat_id, open(temp_file, 'rb'))
         else:
-            bot.sendMessage(chat_id, 'Log file not found at /home/pi/raspitrader_cron.log')
+            send('Log file not found at /home/pi/personalapp/raspiapp/crypto_trader/raspitrader_cron.log')
+
+    elif chat_id == 13981480 and command == '/update_bot':
+        send('♻️ Updating and restarting Telebot...')
+        os.system('/home/pi/restart_telebot.sh &')
+
+    elif chat_id == 13981480 and command == '/telebot_log':
+        log_file = '/home/pi/personalapp/raspiapp/telebot.log'
+        if os.path.exists(log_file):
+            # Read last 100 lines only
+            with open(log_file, 'r') as f:
+                lines = f.readlines()[-100:]
+            temp_file = '/tmp/telebot_last100.log'
+            with open(temp_file, 'w') as f:
+                f.writelines(lines)
+            send('Sending last 100 lines of telebot.log...')
+            bot.sendDocument(chat_id, open(temp_file, 'rb'))
+        else:
+            send('Log file not found at /home/pi/personalapp/raspiapp/telebot.log')
+    
+    elif chat_id == 13981480 and command == '/backup_log':
+        log_file = '/home/pi/rsync-backup.log'
+        if os.path.exists(log_file):
+            # Read last 100 lines only
+            with open(log_file, 'r') as f:
+                lines = f.readlines()[-100:]
+            temp_file = '/tmp/rsync-backup_last100.log'
+            with open(temp_file, 'w') as f:
+                f.writelines(lines)
+            send(chat_id, 'Sending last 100 lines of rsync-backup.log...')
+            bot.sendDocument(chat_id, open(temp_file, 'rb'))
+        else:
+            send('Log file not found at /home/pi/rsync-backup.log')
 
 
     elif chat_id == 13981480 and command == '/help':
-        message = 'These are the commands available:\n' +\
-                  '- /weather --> Get current weather.\n' +\
-                  '- /reboot --> Reboot Raspi.\n' +\
-                  '- /vpn --> VPN service status.\n' +\
-                  '- /vpn_users --> Get list of VPN users.\n' +\
-                  '- /vpn_info user --> Get info about VPN users.\n' +\
-                  '- /hdd --> HDD units status.\n' +\
-                  '- /dlna --> MiniDLNA service status.\n' +\
-                  '- /temp --> CPU temperature.\n' +\
-                  '- /speed --> Network speed test.\n' +\
-                  '- /reload --> Index miniDLNA catalog.\n' +\
-                  '- /crypto --> Get crypto wallet info.\n' +\
-                  '- /crypto_trade --> Get crypto market.\n' +\
-                  '- /crypto_markets --> Configure markets.\n' +\
-                  '- /trader_log --> Send the raspitrader cron log file.\n'
-        bot.sendMessage(chat_id, message)
+        message = (
+            '*These are the commands available:*\n'
+            '- /update_bot → Update Telebot service.\n'
+            '- /weather → Get 3-day weather forcast.\n'
+            '- /reboot → Reboot Raspi.\n'
+            '- /vpn → VPN service status.\n'
+            '- /vpn_users → Get list of VPN users.\n'
+            '- /vpn_info user → Get info about VPN users.\n'
+            '- /hdd → HDD units status.\n'
+            '- /dlna → MiniDLNA service status.\n'
+            '- /temp → CPU temperature.\n'
+            '- /speed → Network speed test.\n'
+            '- /reload → Index miniDLNA catalog.\n'
+            '- /crypto → Get crypto wallet info.\n'
+            '- /crypto_trade → Get crypto market.\n'
+            '- /crypto_markets → Configure markets.\n'
+            '- /trader_log → Send the raspitrader cron log file.\n'
+            '- /telebot_log → Send the telebot log file.\n'
+            '- /backup_log → Send the Rsync backup log file.\n'
+        )
+        send(message)
 
+def send(text):
+    bot.sendMessage(13981480, text, parse_mode='Markdown')
 
 #Telegram message
 bot = telepot.Bot('1228874624:AAEkMwsunE4BLoFndVIowKlAUnqcCYEeR78')
+send("✅ Telebot is back online.")
 bot.message_loop(handle)
 
 while 1:
