@@ -238,7 +238,7 @@ def handle(msg):
             send('Sending last 100 lines of raspitrader_cron.log...')
             bot.sendDocument(chat_id, open(temp_file, 'rb'))
         else:
-            send('Log file not found at /home/pi/personalapp/raspiapp/crypto_trader/raspitrader_cron.log')
+            send('Log file not found at /home/pi/personalapp/raspiapp/crypto_trader/raspitrader\_cron.log')
 
     elif chat_id == 13981480 and command == '/update_bot':
         send('♻️ Updating and restarting Telebot...')
