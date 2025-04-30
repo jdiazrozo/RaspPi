@@ -12,7 +12,8 @@ sys.path.insert(0, RASPITRADER_PATH)
 import raspitrader as trader # type: ignore
 
 config_file_path = os.path.join(RASPITRADER_PATH, 'crypto_values/trade_config.py')
-# config_file_path = '/home/pi/personalapp/raspiapp/crypto_values/trade_config.py'
+
+
 chat_state = {}
 # Function to load the trade_config module
 def load_trade_config():
@@ -242,7 +243,7 @@ def handle(msg):
 
     elif chat_id == 13981480 and command == '/update_bot':
         send('♻️ Updating and restarting Telebot...')
-        os.system('/home/pi/restart_telebot.sh &')
+        os.system('/home/pi/personalapp/raspiapp/restart_telebot.sh &')
 
     elif chat_id == 13981480 and command == '/telebot_log':
         log_file = '/home/pi/personalapp/raspiapp/telebot.log'
@@ -276,23 +277,23 @@ def handle(msg):
     elif chat_id == 13981480 and command == '/help':
         message = (
             '*These are the commands available:*\n'
-            '- /update\_bot → Update Telebot service.\n'
-            '- /weather → Get 3-day weather forcast.\n'
-            '- /reboot → Reboot Raspi.\n'
-            '- /vpn → VPN service status.\n'
-            '- /vpn\_users → Get list of VPN users.\n'
-            '- /vpn\_info user → Get info about VPN users.\n'
-            '- /hdd → HDD units status.\n'
-            '- /dlna → MiniDLNA service status.\n'
-            '- /temp → CPU temperature.\n'
-            '- /speed → Network speed test.\n'
-            '- /reload → Index miniDLNA catalog.\n'
-            '- /crypto → Get crypto wallet info.\n'
-            '- /crypto\_trade → Get crypto market.\n'
-            '- /crypto\_markets → Configure markets.\n'
-            '- /trader\_log → Send the raspitrader cron log file.\n'
-            '- /telebot\_log → Send the telebot log file.\n'
-            '- /backup\_log → Send the Rsync backup log file.\n'
+            '/update\_bot → Update Telebot service.\n'
+            '/weather → Get 3-day weather forcast.\n'
+            '/reboot → Reboot Raspi.\n'
+            '/vpn → VPN service status.\n'
+            '/vpn\_users → Get list of VPN users.\n'
+            '/vpn\_info user → Get info about VPN users.\n'
+            '/hdd → HDD units status.\n'
+            '/dlna → MiniDLNA service status.\n'
+            '/temp → CPU temperature.\n'
+            '/speed → Network speed test.\n'
+            '/reload → Index miniDLNA catalog.\n'
+            '/crypto → Get crypto wallet info.\n'
+            '/crypto\_trade → Get crypto market.\n'
+            '/crypto\_markets → Configure markets.\n'
+            '/trader\_log → Send the raspitrader log file.\n'
+            '/telebot\_log → Send the telebot log file.\n'
+            '/backup\_log → Send the Rsync log file.\n'
         )
         send(message)
 
