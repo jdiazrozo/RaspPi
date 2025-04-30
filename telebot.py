@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import telepot # type: ignore
 from telepot.loop import MessageLoop # type: ignore
 import importlib.util
