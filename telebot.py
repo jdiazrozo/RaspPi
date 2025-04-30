@@ -9,7 +9,7 @@ import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RASPITRADER_PATH = os.path.join(BASE_DIR, 'crypto_trader')
 sys.path.insert(0, RASPITRADER_PATH)
-import raspitrader as trader
+import raspitrader as trader # type: ignore
 
 config_file_path = os.path.join(RASPITRADER_PATH, 'crypto_values/trade_config.py')
 # config_file_path = '/home/pi/personalapp/raspiapp/crypto_values/trade_config.py'
