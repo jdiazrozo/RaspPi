@@ -276,23 +276,23 @@ def handle(msg):
     elif chat_id == 13981480 and command == '/help':
         message = (
             '*These are the commands available:*\n'
-            '- /update_bot → Update Telebot service.\n'
+            '- /update\_bot → Update Telebot service.\n'
             '- /weather → Get 3-day weather forcast.\n'
             '- /reboot → Reboot Raspi.\n'
             '- /vpn → VPN service status.\n'
-            '- /vpn_users → Get list of VPN users.\n'
-            '- /vpn_info user → Get info about VPN users.\n'
+            '- /vpn\_users → Get list of VPN users.\n'
+            '- /vpn\_info user → Get info about VPN users.\n'
             '- /hdd → HDD units status.\n'
             '- /dlna → MiniDLNA service status.\n'
             '- /temp → CPU temperature.\n'
             '- /speed → Network speed test.\n'
             '- /reload → Index miniDLNA catalog.\n'
             '- /crypto → Get crypto wallet info.\n'
-            '- /crypto_trade → Get crypto market.\n'
-            '- /crypto_markets → Configure markets.\n'
-            '- /trader_log → Send the raspitrader cron log file.\n'
-            '- /telebot_log → Send the telebot log file.\n'
-            '- /backup_log → Send the Rsync backup log file.\n'
+            '- /crypto\_trade → Get crypto market.\n'
+            '- /crypto\_markets → Configure markets.\n'
+            '- /trader\_log → Send the raspitrader cron log file.\n'
+            '- /telebot\_log → Send the telebot log file.\n'
+            '- /backup\_log → Send the Rsync backup log file.\n'
         )
         send(message)
 
