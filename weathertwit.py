@@ -4,6 +4,12 @@ from datetime import datetime
 from collections import defaultdict
 import telepot # type: ignore
 import requests
+from dotenv import load_dotenv
+load_dotenv('/home/pi/keys/.env')
+
+chat_id = int(os.getenv("chat_id"))
+telegram_key = os.getenv("telegram_key")
+weather_key = os.getenv("weather_key")
 
 
 # Emoji mapping for weather
@@ -20,17 +26,16 @@ WEATHER_EMOJIS = {
 
 #Telegram message
 def telegram(msg):
-    bot = telepot.Bot('1228874624:AAEkMwsunE4BLoFndVIowKlAUnqcCYEeR78')
-    bot.sendMessage(chat_id=13981480, text=msg, parse_mode="Markdown")
+    bot = telepot.Bot(telegram_key)
+    bot.sendMessage(chat_id=chat_id, text=msg, parse_mode="Markdown")
     return
 
 #External Weather Conditions
 def get_forecast():
     api_url="https://api.openweathermap.org/data/2.5/forecast?lat=%f&lon=%f&appid=%s&units=metric"
-    api_key="a7bb49dcaa2699e9eb3a04a8bb2583a3"
     lat=43.3128
     lon=-1.975
-    query_url = api_url % (lat, lon, api_key)
+    query_url = api_url % (lat, lon, weather_key)
     data = requests.get(query_url).json()
     return data['list']
 
