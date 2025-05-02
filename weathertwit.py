@@ -4,6 +4,7 @@ from datetime import datetime
 from collections import defaultdict
 import telepot # type: ignore
 import requests
+import os
 from dotenv import load_dotenv
 load_dotenv('/home/pi/keys/.env')
 
