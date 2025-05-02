@@ -11,7 +11,7 @@ RASPITRADER_PATH = os.path.join(BASE_DIR, 'crypto_trader')
 sys.path.insert(0, RASPITRADER_PATH)
 import raspitrader as trader # type: ignore
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv('/home/pi/keys/.env')
 
 config_file_path = os.path.join(RASPITRADER_PATH, 'crypto_values/trade_config.py')
 
