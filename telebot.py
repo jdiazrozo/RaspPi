@@ -270,7 +270,7 @@ def handle(msg):
             temp_file = '/tmp/rsync-backup_last100.log'
             with open(temp_file, 'w') as f:
                 f.writelines(lines)
-            send(chat_id, 'Sending last 100 lines of rsync-backup.log...')
+            send('Sending last 100 lines of rsync-backup.log...')
             bot.sendDocument(chat_id, open(temp_file, 'rb'))
         else:
             send('Log file not found at /home/pi/rsync-backup.log')
