@@ -236,7 +236,7 @@ def handle(msg):
             temp_file = '/tmp/raspitrader_cron_last100.log'
             with open(temp_file, 'w') as f:
                 f.writelines(lines)
-            send('Sending last 100 lines of raspitrader_cron.log...')
+            send('Sending last 100 lines of raspitrader\_cron.log...')
             bot.sendDocument(chat_id, open(temp_file, 'rb'))
         else:
             send('Log file not found at /home/pi/personalapp/raspiapp/crypto_trader/raspitrader\_cron.log')
