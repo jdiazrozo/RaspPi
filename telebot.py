@@ -10,6 +10,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RASPITRADER_PATH = os.path.join(BASE_DIR, 'crypto_trader')
 sys.path.insert(0, RASPITRADER_PATH)
 import raspitrader as trader # type: ignore
+from dotenv import load_dotenv
+load_dotenv()
 
 config_file_path = os.path.join(RASPITRADER_PATH, 'crypto_values/trade_config.py')
 
@@ -298,10 +300,12 @@ def handle(msg):
         send(message)
 
 def send(text):
-    bot.sendMessage(13981480, text, parse_mode='Markdown')
+    bot.sendMessage(chat_id, text, parse_mode='Markdown')
 
 #Telegram message
-bot = telepot.Bot('1228874624:AAEkMwsunE4BLoFndVIowKlAUnqcCYEeR78')
+chat_id = os.getenv("chat_id")
+telegram_key = os.getenv("telegram_key")
+bot = telepot.Bot(telegram_key)
 send("✅ Telebot is back online.")
 bot.message_loop(handle)
 
