@@ -118,7 +118,7 @@ def handle(msg):
         command = comm[0]
         parameter = comm[1]
 
-    if cmsg['chat']['id'] == chat_id and command == '/reboot':
+    if msg['chat']['id'] == chat_id and command == '/reboot':
         send('Restarting RasPi, see you...')
         os.system('sudo reboot now')
 
