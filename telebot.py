@@ -10,7 +10,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RASPITRADER_PATH = os.path.join(BASE_DIR, 'crypto_trader')
 sys.path.insert(0, RASPITRADER_PATH)
 import raspitrader as trader # type: ignore
-from dotenv import load_dotenv
+from dotenv import load_dotenv # type: ignore
 load_dotenv('/home/pi/keys/.env')
 
 config_file_path = os.path.join(RASPITRADER_PATH, 'crypto_values/trade_config.py')
@@ -195,6 +195,20 @@ def handle(msg):
         send("*Do you want to change a market?* (yes/no)", parse_mode = 'Markdown')
         chat_state[chat_id] = 'ask_if_change'
 
+    elif msg['chat']['id'] == chat_id and command == '/crypto_json':
+        log_file = '/home/pi/personalapp/raspiapp/crypto_trader/crypto_values/state.json'
+        if os.path.exists(log_file):
+            # Read last 100 lines only
+            with open(log_file, 'r') as f:
+                lines = f.readlines()[-100:]
+            temp_file = '/tmp/state.log'
+            with open(temp_file, 'w') as f:
+                f.writelines(lines)
+            send('Sending last 100 lines of state.json...')
+            bot.sendDocument(chat_id, open(temp_file, 'rb'))
+        else:
+            send('Log file not found at /home/pi/personalapp/raspiapp/crypto_trader/crypto_values/state.json')
+
     elif msg['chat']['id'] == chat_id in chat_state:
         text = msg['text'].lower()
         if chat_state[chat_id] == 'ask_if_change':
@@ -294,6 +308,7 @@ def handle(msg):
             '/reload → Index miniDLNA catalog.\n'
             '/crypto → Get crypto wallet info.\n'
             '/crypto\_trade → Get crypto market.\n'
+            '/crypto\_json → Markets margin values.\n'
             '/crypto\_markets → Configure markets.\n'
             '/trader\_log → Send the raspitrader log file.\n'
             '/telebot\_log → Send the telebot log file.\n'
