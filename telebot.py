@@ -196,16 +196,10 @@ def handle(msg):
         chat_state[chat_id] = 'ask_if_change'
 
     elif msg['chat']['id'] == chat_id and command == '/crypto_json':
-        log_file = '/home/pi/personalapp/raspiapp/crypto_trader/crypto_values/state.json'
-        if os.path.exists(log_file):
-            # Read last 100 lines only
-            with open(log_file, 'r') as f:
-                lines = f.readlines()[-100:]
-            temp_file = '/tmp/state.log'
-            with open(temp_file, 'w') as f:
-                f.writelines(lines)
-            send('Sending last 100 lines of state.json...')
-            bot.sendDocument(chat_id, open(temp_file, 'rb'))
+        json_file = '/home/pi/personalapp/raspiapp/crypto_trader/crypto_values/state.json'
+        if os.path.exists(json_file):
+            send('Sending state.json...')
+            bot.sendDocument(chat_id, open(json_file, 'rb'))
         else:
             send('Log file not found at /home/pi/personalapp/raspiapp/crypto_trader/crypto_values/state.json')
 
