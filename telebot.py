@@ -253,8 +253,15 @@ def handle(msg):
         else:
             send('Log file not found at /home/pi/personalapp/raspiapp/crypto_trader/raspitrader\_cron.log')
 
-    elif msg['chat']['id'] == chat_id and command == '/update_bot':
-        send('♻️ Updating and restarting Telebot...')
+    elif msg['chat']['id'] == chat_id and command == '/restart_bot':
+        send('🍊 Pulling latest updates from Git...')
+        status = os.system('cd /home/pi/raspi_services && git pull origin master > /tmp/git_pull.log 2>&1')
+        if status == 0:
+            send('✅ Raspi Telebot Service updated successfully.')
+        else:
+            send('⚠️ Git pull failed. Sending log...')
+            bot.sendDocument(chat_id, open('/tmp/git_pull.log', 'rb'))
+        send('♻️ Restarting Telebot...')
         os.system('/home/pi/personalapp/raspiapp/restart_telebot.sh &')
 
     elif msg['chat']['id'] == chat_id and command == '/telebot_log':
@@ -289,16 +296,15 @@ def handle(msg):
         send('🍊 Pulling latest updates from Git...')
         status = os.system('cd /home/pi/crypto_trader && git pull origin master > /tmp/git_pull.log 2>&1')
         if status == 0:
-            send('✅ Crypto trader update completed successfully.')
+            send('✅ Crypto Trader update completed successfully.')
         else:
             send('⚠️ Git pull failed. Sending log...')
             bot.sendDocument(chat_id, open('/tmp/git_pull.log', 'rb'))
 
-
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
             '*These are the commands available:*\n'
-            '/update\_bot → Update Telebot service.\n'
+            '/update\_raspibot → Update Telebot service.\n'
             '/update\_trader → Update Trader bot.\n'
             '/weather → Get 3-day weather forcast.\n'
             '/reboot → Reboot Raspi.\n'
