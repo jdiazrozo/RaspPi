@@ -285,11 +285,21 @@ def handle(msg):
         else:
             send('Log file not found at /home/pi/rsync-backup.log')
 
+    elif msg['chat']['id'] == chat_id and command == '/update_trader':
+        send('🍊 Pulling latest updates from Git...')
+        status = os.system('cd /home/pi/crypto_trader && git pull origin master > /tmp/git_pull.log 2>&1')
+        if status == 0:
+            send('✅ Crypto trader update completed successfully.')
+        else:
+            send('⚠️ Git pull failed. Sending log...')
+            bot.sendDocument(chat_id, open('/tmp/git_pull.log', 'rb'))
+
 
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
             '*These are the commands available:*\n'
             '/update\_bot → Update Telebot service.\n'
+            '/update\_trader → Update Trader bot.\n'
             '/weather → Get 3-day weather forcast.\n'
             '/reboot → Reboot Raspi.\n'
             '/vpn → VPN service status.\n'
