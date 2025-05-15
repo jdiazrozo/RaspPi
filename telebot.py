@@ -253,7 +253,7 @@ def handle(msg):
         else:
             send('Log file not found at /home/pi/personalapp/raspiapp/crypto_trader/raspitrader\_cron.log')
 
-    elif msg['chat']['id'] == chat_id and command == '/restart_bot':
+    elif msg['chat']['id'] == chat_id and command == '/update_raspibot':
         send('🍊 Pulling latest updates from Git...')
         status = os.system('cd /home/pi/raspi_services && git pull origin master > /tmp/git_pull.log 2>&1')
         if status == 0:
