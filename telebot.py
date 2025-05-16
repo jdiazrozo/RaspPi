@@ -257,7 +257,8 @@ def handle(msg):
         send('🍊 Pulling latest updates from Git...')
         status = os.system('cd /home/pi/raspi_services && git pull origin master > /tmp/git_pull.log 2>&1')
         if status == 0:
-            send('✅ Raspi Telebot Service updated successfully.')
+            send('✅ Raspi Telebot Service updated successfully. Sending the log...')
+            bot.sendDocument(chat_id, open('/tmp/git_pull.log', 'rb'))
         else:
             send('⚠️ Git pull failed. Sending log...')
             bot.sendDocument(chat_id, open('/tmp/git_pull.log', 'rb'))
