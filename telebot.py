@@ -6,8 +6,11 @@ import os
 import time
 import pandas as pd # type: ignore
 import sys
+import json
+import shutil
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RASPITRADER_PATH = os.path.join(BASE_DIR, 'crypto_trader')
+STATE_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/state.json')
 sys.path.insert(0, RASPITRADER_PATH)
 import raspitrader as trader # type: ignore
 from dotenv import load_dotenv # type: ignore
@@ -19,6 +22,28 @@ config_file_path = os.path.join(RASPITRADER_PATH, 'crypto_values/trade_config.py
 chat_state = {}
 chat_id = int(os.getenv("chat_id"))
 telegram_key = os.getenv("telegram_key")
+
+def load_state_json(path):
+    with open(path, 'r') as f:
+        return json.load(f)
+
+def save_state_json(path, data):
+    with open(path, 'w') as f:
+        json.dump(data, f, indent=2)
+
+def backup_state_file(original, backup):
+    shutil.copy(original, backup)
+
+def restore_state_file(backup, original):
+    shutil.copy(backup, original)
+
+def list_symbols_and_keys(path):
+    state = load_state_json(path)
+    listing = ["*Available symbols and keys:*"]
+    for symbol in state:
+        keys = ', '.join(state[symbol].keys())
+        listing.append(f"- *{symbol}*: {keys}")
+    return '\n'.join(listing)
 
 # Function to load the trade_config module
 def load_trade_config():
@@ -196,10 +221,10 @@ def handle(msg):
         chat_state[chat_id] = 'ask_if_change'
 
     elif msg['chat']['id'] == chat_id and command == '/crypto_json':
-        json_file = '/home/pi/personalapp/raspiapp/crypto_trader/crypto_values/state.json'
-        if os.path.exists(json_file):
+      #  json_file = '/home/pi/personalapp/raspiapp/crypto_trader/crypto_values/state.json'
+        if os.path.exists(STATE_PATH):
             send('Sending state.json...')
-            bot.sendDocument(chat_id, open(json_file, 'rb'))
+            bot.sendDocument(chat_id, open(STATE_PATH, 'rb'))
         else:
             send('Log file not found at /home/pi/personalapp/raspiapp/crypto_trader/crypto_values/state.json')
 
@@ -303,6 +328,68 @@ def handle(msg):
             send('⚠️ Git pull failed. Sending log...')
             bot.sendDocument(chat_id, open('/tmp/git_pull.log', 'rb'))
 
+    elif msg['chat']['id'] == chat_id and command == '/set_state':
+        try:
+            if len(comm) != 4:
+                send("Usage: /set_state <symbol> <key> <value>\nExample: /set_state BTCUSDC cumulative_profit 42.0\n\nUse /list_state_keys to view available options.")
+            else:
+                symbol, key, raw_value = comm[1], comm[2], comm[3]
+
+                state = load_state_json(STATE_PATH)
+                if symbol not in state:
+                    send(f"❌ Symbol `{symbol}` not found.\nUse /list_state_keys to view valid options.")
+                    return
+                if key not in state[symbol]:
+                    send(f"❌ Key `{key}` not found in `{symbol}`.\nUse /list_state_keys to view valid options.")
+                    return
+
+                # Detect type from existing value
+                old_value = state[symbol][key]
+                if isinstance(old_value, bool):
+                    if raw_value.lower() not in ['true', 'false']:
+                        send(f"❌ Invalid boolean. Use `true` or `false` for `{key}`.")
+                        return
+                    new_value = raw_value.lower() == 'true'
+                elif isinstance(old_value, (int, float)):
+                    try:
+                        new_value = type(old_value)(raw_value)
+                    except ValueError:
+                        send(f"❌ Invalid numeric input. Expected {type(old_value).__name__} for `{key}`.")
+                        return
+                elif isinstance(old_value, str):
+                    new_value = raw_value
+                else:
+                    send("❌ Unsupported key type.")
+                    return
+
+                # Backup before update
+                backup_file = STATE_PATH + '.bak'
+                backup_state_file(STATE_PATH, backup_file)
+
+                # Save new value
+                state[symbol][key] = new_value
+                save_state_json(STATE_PATH, state)
+
+                send(f"✅ Updated `{symbol}` → `{key}`: `{old_value}` → `{new_value}`\nBackup saved at `{backup_file}`")
+
+        except Exception as e:
+            send(f"⚠️ Error: {e}")
+
+    elif msg['chat']['id'] == chat_id and command == '/list_state_keys':
+        message = list_symbols_and_keys(STATE_PATH)
+        send(message, parse_mode='Markdown')
+
+    elif msg['chat']['id'] == chat_id and command == '/restore_state_backup':
+        try:
+            backup_file = STATE_PATH + '.bak'
+            if os.path.exists(backup_file):
+                restore_state_file(backup_file, STATE_PATH)
+                send("✅ state.json has been restored from backup.")
+            else:
+                send("❌ No backup file found.")
+        except Exception as e:
+            send(f"⚠️ Error restoring backup: {e}")
+
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
             '*These are the commands available:*\n'
@@ -321,6 +408,9 @@ def handle(msg):
             '/crypto → Get crypto wallet info.\n'
             '/crypto\_trade → Get crypto market.\n'
             '/crypto\_json → Markets margin values.\n'
+            '/list\_state\_keys → List of keys in json.\n'
+            '/set\_state → <symbol> <key> <value>.\n'
+            '/restore\_state\_backup → Restore json backup.\n'
             '/crypto\_markets → Configure markets.\n'
             '/trader\_log → Send the raspitrader log file.\n'
             '/telebot\_log → Send the telebot log file.\n'
