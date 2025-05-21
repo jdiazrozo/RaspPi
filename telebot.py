@@ -8,6 +8,7 @@ import pandas as pd # type: ignore
 import sys
 import json
 import shutil
+import re
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RASPITRADER_PATH = os.path.join(BASE_DIR, 'crypto_trader')
 STATE_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/state.json')
@@ -53,6 +54,11 @@ def list_symbols_and_common_keys(path):
             listing.append(f"- `{key}`")
 
     return '\n'.join(listing)
+
+def escape_markdown(text):
+    # Escape MarkdownV2 reserved characters
+    escape_chars = r'_*[]()~`>#+-=|{}.!'
+    return re.sub(r'([%s])' % re.escape(escape_chars), r'\\\1', text)
 
 # Function to load the trade_config module
 def load_trade_config():
@@ -431,7 +437,8 @@ def handle(msg):
         send(message)
 
 def send(text):
-    bot.sendMessage(chat_id, text, parse_mode='Markdown')
+    escaped_text = escape_markdown(text)
+    bot.sendMessage(chat_id, escaped_text, parse_mode='MarkdownV2')
 
 #Telegram message
 bot = telepot.Bot(telegram_key)
