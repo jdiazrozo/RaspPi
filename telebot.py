@@ -57,7 +57,7 @@ def list_symbols_and_common_keys(path):
 
 def escape_markdown(text):
     # Escape MarkdownV2 reserved characters
-    escape_chars = r'_*[]()~`>#+-=|{}.!'
+    escape_chars = r'_*\[\]()~`>#+-=|{}.!'
     return re.sub(r'([%s])' % re.escape(escape_chars), r'\\\1', text)
 
 # Function to load the trade_config module
