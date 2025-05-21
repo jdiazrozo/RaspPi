@@ -377,7 +377,7 @@ def handle(msg):
 
     elif msg['chat']['id'] == chat_id and command == '/list_state_keys':
         message = list_symbols_and_keys(STATE_PATH)
-        send(message, parse_mode='Markdown')
+        send(message)
 
     elif msg['chat']['id'] == chat_id and command == '/restore_state_backup':
         try:
