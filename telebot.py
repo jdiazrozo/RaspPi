@@ -346,7 +346,11 @@ def handle(msg):
     elif msg['chat']['id'] == chat_id and command == '/set_state':
         try:
             if len(comm) != 4:
-                send("Usage: /set_state <symbol> <key> <value>\nExample: /set_state BTCUSDC cumulative_profit 42.0\n\nUse /list_state_keys to view available options.")
+                send(
+                    "Usage: /set_state <symbol> <key> <value>\n" \
+                    "Example: /set_state BTCUSDC cumulative_profit 42.0\n" \
+                    "Use /list_state_keys to view available options."
+                    )
             else:
                 symbol, key, raw_value = comm[1], comm[2], comm[3]
 
@@ -411,28 +415,28 @@ def handle(msg):
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
             '*These are the commands available:*\n'
-            '/update\_raspibot → Update Telebot service.\n'
-            '/update\_trader → Update Trader bot.\n'
+            '/update_raspibot → Update Telebot service.\n'
+            '/update_trader → Update Trader bot.\n'
             '/weather → Get 3-day weather forcast.\n'
             '/reboot → Reboot Raspi.\n'
             '/vpn → VPN service status.\n'
-            '/vpn\_users → Get list of VPN users.\n'
-            '/vpn\_info user → Get info about VPN users.\n'
+            '/vpn_users → Get list of VPN users.\n'
+            '/vpn_info user → Get info about VPN users.\n'
             '/hdd → HDD units status.\n'
             '/dlna → MiniDLNA service status.\n'
             '/temp → CPU temperature.\n'
             '/speed → Network speed test.\n'
             '/reload → Index miniDLNA catalog.\n'
             '/crypto → Get crypto wallet info.\n'
-            '/crypto\_trade → Get crypto market.\n'
-            '/crypto\_json → Markets margin values.\n'
-            '/list\_state\_keys → List of keys in json.\n'
-            '/set\_state → <symbol> <key> <value>.\n'
-            '/restore\_state\_backup → Restore json backup.\n'
-            '/crypto\_markets → Configure markets.\n'
-            '/trader\_log → Send the raspitrader log file.\n'
-            '/telebot\_log → Send the telebot log file.\n'
-            '/backup\_log → Send the Rsync log file.\n'
+            '/crypto_trade → Get crypto market.\n'
+            '/crypto_json → Markets margin values.\n'
+            '/list_state_keys → List of keys in json.\n'
+            '/set_state → <symbol> <key> <value>.\n'
+            '/restore_state_backup → Restore json backup.\n'
+            '/crypto_markets → Configure markets.\n'
+            '/trader_log → Send the raspitrader log file.\n'
+            '/telebot_log → Send the telebot log file.\n'
+            '/backup_log → Send the Rsync log file.\n'
         )
         send(message)
 
