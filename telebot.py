@@ -37,12 +37,21 @@ def backup_state_file(original, backup):
 def restore_state_file(backup, original):
     shutil.copy(backup, original)
 
-def list_symbols_and_keys(path):
+def list_symbols_and_common_keys(path):
     state = load_state_json(path)
-    listing = ["*Available symbols and keys:*"]
-    for symbol in state:
-        keys = ', '.join(state[symbol].keys())
-        listing.append(f"- *{symbol}*: {keys}")
+    symbols = list(state.keys())
+    first_symbol = symbols[0] if symbols else None
+    keys = list(state[first_symbol].keys()) if first_symbol else []
+
+    listing = ["*Available symbols:*"]
+    for symbol in symbols:
+        listing.append(f"- `{symbol}`")
+
+    if keys:
+        listing.append("\n*Editable keys:*")
+        for key in keys:
+            listing.append(f"- `{key}`")
+
     return '\n'.join(listing)
 
 # Function to load the trade_config module
@@ -376,8 +385,11 @@ def handle(msg):
             send(f"⚠️ Error: {e}")
 
     elif msg['chat']['id'] == chat_id and command == '/list_state_keys':
-        message = list_symbols_and_keys(STATE_PATH)
-        send(message)
+        try:
+            message = list_symbols_and_common_keys(STATE_PATH)
+            send(message)
+        except Exception as e:
+            send(f"⚠️ Error retrieving symbols and keys: {e}")
 
     elif msg['chat']['id'] == chat_id and command == '/restore_state_backup':
         try:
