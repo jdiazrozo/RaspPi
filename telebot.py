@@ -224,6 +224,10 @@ def handle(msg):
         send(message, parse_mode = 'Markdown')
 
     elif msg['chat']['id'] == chat_id and command == '/crypto_trade':
+        send('Performing actual state.json backup...\n')
+        # Backup before update
+        backup_file = STATE_PATH + '.bak'
+        backup_state_file(STATE_PATH, backup_file)
         send('Getting latest market data. Please wait few seconds...\n')
         trader.main()
 
@@ -231,12 +235,11 @@ def handle(msg):
         trade_config = load_trade_config()
         markets = trade_config.markets
         formatted_markets = "\n".join(f"{idx + 1}. {market}" for idx, market in enumerate(markets))
-        send(f"*Current markets:*\n{formatted_markets}", parse_mode = 'Markdown')
-        send("*Do you want to change a market?* (yes/no)", parse_mode = 'Markdown')
+        send(f"*Current markets:*\n{formatted_markets}")
+        send("*Do you want to change a market?* (yes/no)")
         chat_state[chat_id] = 'ask_if_change'
 
-    elif msg['chat']['id'] == chat_id and command == '/crypto_json':
-      #  json_file = '/home/pi/personalapp/raspiapp/crypto_trader/crypto_values/state.json'
+    elif msg['chat']['id'] == chat_id and command == '/crypto_state':
         if os.path.exists(STATE_PATH):
             send('Sending state.json...')
             bot.sendDocument(chat_id, open(STATE_PATH, 'rb'))
@@ -288,10 +291,10 @@ def handle(msg):
             temp_file = '/tmp/raspitrader_cron_last100.log'
             with open(temp_file, 'w') as f:
                 f.writelines(lines)
-            send('Sending last 100 lines of raspitrader\_cron.log...')
+            send('Sending last 100 lines of raspitrader_cron.log...')
             bot.sendDocument(chat_id, open(temp_file, 'rb'))
         else:
-            send('Log file not found at /home/pi/personalapp/raspiapp/crypto_trader/raspitrader\_cron.log')
+            send('Log file not found at /home/pi/personalapp/raspiapp/crypto_trader/raspitrader_cron.log')
 
     elif msg['chat']['id'] == chat_id and command == '/update_raspibot':
         send('🍊 Pulling latest updates from Git...')
@@ -414,29 +417,31 @@ def handle(msg):
 
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
-            '*These are the commands available:*\n'
-            '/update_raspibot → Update Telebot service.\n'
-            '/update_trader → Update Trader bot.\n'
-            '/weather → Get 3-day weather forcast.\n'
-            '/reboot → Reboot Raspi.\n'
-            '/vpn → VPN service status.\n'
-            '/vpn_users → Get list of VPN users.\n'
-            '/vpn_info user → Get info about VPN users.\n'
-            '/hdd → HDD units status.\n'
-            '/dlna → MiniDLNA service status.\n'
-            '/temp → CPU temperature.\n'
-            '/speed → Network speed test.\n'
-            '/reload → Index miniDLNA catalog.\n'
-            '/crypto → Get crypto wallet info.\n'
-            '/crypto_trade → Get crypto market.\n'
-            '/crypto_json → Markets margin values.\n'
-            '/list_state_keys → List of keys in json.\n'
-            '/set_state → <symbol> <key> <value>.\n'
-            '/restore_state_backup → Restore json backup.\n'
-            '/crypto_markets → Configure markets.\n'
-            '/trader_log → Send the raspitrader log file.\n'
-            '/telebot_log → Send the telebot log file.\n'
-            '/backup_log → Send the Rsync log file.\n'
+            '*General Raspi services commands available:*\n'
+            '`/update_raspibot → Update Telebot service.`\n'
+            '`/reboot → Reboot Raspi.`\n'
+            '`/vpn → VPN service status.`\n'
+            '`/vpn_users → Get list of VPN users.`\n'
+            '`/vpn_info user → Get info about VPN users.`\n'
+            '`/hdd → HDD units status.`\n'
+            '`/dlna → MiniDLNA service status.`\n'
+            '`/temp → CPU temperature.`\n'
+            '`/reload → Index miniDLNA catalog.`\n'
+            '`/telebot_log → Send the telebot log file.`\n'
+            '`/backup_log → Send the Rsync log file.`\n'
+            '\n*Information commands available:*\n'
+            '`/speed → Network speed test.`\n'
+            '`/weather → Get 3-day weather forcast.`\n'
+            '\n*Crypto trading commands available:*\n'
+            '`/update_trader → Update Trader bot.`\n'
+            '`/crypto → Get crypto wallet positions.`\n'
+            '`/crypto_trade → Get crypto market analysis.`\n'
+            '`/crypto_state → Get state.json.`\n'
+            '`/list_state_keys → List of keys in json.`\n'
+            '`/set_state → <symbol> <key> <value>.`\n'
+            '`/restore_state_backup → Restore json backup.`\n'
+            '`/crypto_markets → Configure markets.`\n'
+            '`/trader_log → Send the raspitrader log file.`\n'
         )
         send(message)
 
