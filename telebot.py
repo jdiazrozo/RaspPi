@@ -439,7 +439,7 @@ def handle(msg):
             '/crypto_state → Get state.json.\n'
             '/list_state_keys → List of keys in json.\n'
             '/set_state → <symbol> <key> <value>.\n'
-            '/restore_state_backup → Restore json backup.\n'
+            '/restore_state_backup → Restore json.\n'
             '/crypto_markets → Configure markets.\n'
             '/trader_log → Send the raspitrader log file.\n'
         )
