@@ -35,8 +35,16 @@ def save_state_json(path, data):
 def backup_state_file(original, backup):
     shutil.copy(original, backup)
 
-def restore_state_file(backup, original):
-    shutil.copy(backup, original)
+def restore_state_file():
+    try:
+        backup_file = STATE_PATH + '.bak'
+        if os.path.exists(backup_file):
+            shutil.copy(backup_file, STATE_PATH)
+            send("✅ state.json has been restored from backup.")
+        else:
+            send("❌ No backup file found.")
+    except Exception as e:
+        send(f"⚠️ Error restoring backup: {e}")
 
 def list_symbols_and_common_keys(path):
     state = load_state_json(path)
@@ -224,12 +232,9 @@ def handle(msg):
         send(message, parse_mode = 'Markdown')
 
     elif msg['chat']['id'] == chat_id and command == '/crypto_trade':
-        send('Performing actual state.json backup...\n')
-        # Backup before update
-        backup_file = STATE_PATH + '.bak'
-        backup_state_file(STATE_PATH, backup_file)
-        send('Getting latest market data. Please wait few seconds...\n')
+        send('🔄 Getting latest market data. Please wait few seconds...\n')
         trader.main()
+        restore_state_file()
 
     elif msg['chat']['id'] == chat_id and command == '/crypto_markets':
         trade_config = load_trade_config()
@@ -405,15 +410,7 @@ def handle(msg):
             send(f"⚠️ Error retrieving symbols and keys: {e}")
 
     elif msg['chat']['id'] == chat_id and command == '/restore_state_backup':
-        try:
-            backup_file = STATE_PATH + '.bak'
-            if os.path.exists(backup_file):
-                restore_state_file(backup_file, STATE_PATH)
-                send("✅ state.json has been restored from backup.")
-            else:
-                send("❌ No backup file found.")
-        except Exception as e:
-            send(f"⚠️ Error restoring backup: {e}")
+        restore_state_file()
 
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
