@@ -444,18 +444,20 @@ def handle(msg):
             for line in lines[2:]:  # Skip [SUMMARY] and ------
                 if not line.strip():
                     continue
-                parts = line.split("|")
-                if len(parts) == 3:  # Market with Q-values + reward
-                    market_info = parts[0].strip()
-                    q_values = parts[1].strip()
-                    reward = parts[2].strip()
-                    formatted_message.append(f"*{market_info}*\n- {q_values}\n- {reward}\n")
-                elif len(parts) == 2:  # Market with Q-values but no reward
-                    market_info = parts[0].strip()
-                    q_values = parts[1].strip()
-                    formatted_message.append(f"*{market_info}*\n- {q_values}\n")
+                parts = [p.strip() for p in line.split("|") if p.strip()]
+                if "No RL data" in line:
+                    market_info = line.split("→")[0].strip() + " → " + line.split("→")[1].split("|")[0].strip()
+                    formatted_message.append(f"{market_info}\n- No RL data\n")
                 else:
-                    formatted_message.append(line)
+                    parts = [p.strip() for p in line.split("|") if p.strip()]
+                    if len(parts) == 3:
+                        market_info, q_values, reward = parts
+                        formatted_message.append(f"{market_info}\n{q_values}\n{reward}\n")
+                    elif len(parts) == 2:
+                        market_info, q_values = parts
+                        formatted_message.append(f"{market_info}\n{q_values}\n")
+                    else:
+                        formatted_message.append(line)
 
             message_to_send = "*RL Performance:*\n" + "\n".join(formatted_message)
             send(message_to_send)
