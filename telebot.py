@@ -160,6 +160,13 @@ def vpn_info(vpn_user):
         user_info = user_db.loc[user_db['Name'] == vpn_user].values.flatten().tolist()
     return(user_info)
 
+def format_qvalues(buy, sell, hold):
+    """Format B, S, H with colored dot emojis."""
+    buy_colored = buy.replace("B:", "🟢 ")
+    sell_colored = sell.replace("S:", "🔴 ")
+    hold_colored = hold.replace("H:", "🟡 ")
+    return f"{buy_colored} | {sell_colored} | {hold_colored}"
+
 #Telegram message parser
 def handle(msg):
     comm = msg['text'].split()
@@ -457,18 +464,20 @@ def handle(msg):
 
                 if len(parts) == 5:
                     market_info, buy, sell, hold, reward = parts
+                    reward_colored = reward.replace("R", "🏆")
+
                     formatted_message.append(
-                        f"*{market_info}*\n- {buy} | {sell} | {hold}\n- {reward}"
+                        f"*{market_info}*\n- {format_qvalues(buy, sell, hold)}\n- {reward_colored}"
                     )
                 elif len(parts) == 4:
                     market_info, buy, sell, hold = parts
                     formatted_message.append(
-                        f"*{market_info}*\n- {buy} | {sell} | {hold}"
+                        f"*{market_info}*\n- {format_qvalues(buy, sell, hold)}"
                     )
                 else:
                     formatted_message.append(line)
 
-            message_to_send = "*RL Performance:*\n" + "\n".join(formatted_message)
+            message_to_send = "*#Reinforcement Learning Performance:*\n" + "\n".join(formatted_message)
             send(message_to_send)
         except Exception as e:
             send(f"⚠️ Error generating RL performance: {e}")
