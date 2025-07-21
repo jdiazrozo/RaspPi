@@ -5,15 +5,19 @@ import re
 import os
 import time
 import pandas as pd # type: ignore
-import sys
 import json
 import shutil
 import re
+from io import StringIO
+import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RASPITRADER_PATH = os.path.join(BASE_DIR, 'crypto_trader')
+CRYPTO_VALUES_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values')
+sys.path.insert(0, CRYPTO_VALUES_PATH)
 STATE_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/state.json')
 sys.path.insert(0, RASPITRADER_PATH)
 import raspitrader as trader # type: ignore
+import trade_utils # type: ignore
 from dotenv import load_dotenv # type: ignore
 load_dotenv('/home/pi/keys/.env')
 
@@ -412,6 +416,22 @@ def handle(msg):
     elif msg['chat']['id'] == chat_id and command == '/restore_state_backup':
         restore_state_file()
 
+    elif msg['chat']['id'] == chat_id and command == '/rl_performance':
+        try:
+            # Load state.json (current bot state)
+            state = load_state_json(STATE_PATH)
+            buffer = StringIO()
+            backup_stdout = sys.stdout
+            sys.stdout = buffer
+            trade_utils.global_performance(state)
+            sys.stdout = backup_stdout
+
+            # Prepare message
+            performance_report = buffer.getvalue().strip()
+            send(f"*RL Performance:*\n{performance_report}", parse_mode='Markdown')
+        except Exception as e:
+            send(f"⚠️ Error generating RL performance: {e}")
+
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
             '*General Raspi services commands available:*\n'
@@ -439,6 +459,7 @@ def handle(msg):
             '/restore_state_backup → Restore json.\n'
             '/crypto_markets → Configure markets.\n'
             '/trader_log → Send the raspitrader log file.\n'
+            '/rl_performance → Get RL performance.\n'
         )
         send(message)
 
