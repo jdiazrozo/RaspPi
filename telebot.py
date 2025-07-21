@@ -447,8 +447,10 @@ def handle(msg):
 
                 # Handle "No RL data"
                 if "No RL data" in line:
-                    formatted_message.append(line.split("|")[0].strip() + "\n- No RL data\n")
+                    market_info = line.split("→")[0].strip() + " → " + line.split("→")[1].strip()
+                    formatted_message.append(f"*{market_info}*\n- No RL data")
                     continue
+
 
                 # Split into parts
                 parts = [p.strip() for p in line.split("|") if p.strip()]
