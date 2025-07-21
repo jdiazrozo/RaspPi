@@ -449,11 +449,11 @@ def handle(msg):
                     market_info = parts[0].strip()
                     q_values = parts[1].strip()
                     reward = parts[2].strip()
-                    formatted_message.append(f"{market_info}\n{q_values}\n{reward}\n")
+                    formatted_message.append(f"*{market_info}*\n- {q_values}\n- {reward}\n")
                 elif len(parts) == 2:  # Market with Q-values but no reward
                     market_info = parts[0].strip()
                     q_values = parts[1].strip()
-                    formatted_message.append(f"{market_info}\n{q_values}\n")
+                    formatted_message.append(f"*{market_info}*\n- {q_values}\n")
                 else:
                     formatted_message.append(line)
 
