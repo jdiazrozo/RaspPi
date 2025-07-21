@@ -162,10 +162,10 @@ def vpn_info(vpn_user):
 
 def format_qvalues(buy, sell, hold):
     """Format B, S, H with colored dot emojis."""
-    buy_colored = buy.replace("B:", "🟢 ")
-    sell_colored = sell.replace("S:", "🔴 ")
-    hold_colored = hold.replace("H:", "🟡 ")
-    return f"{buy_colored} | {sell_colored} | {hold_colored}"
+    buy_colored = buy.replace("B:", "🟢")
+    sell_colored = sell.replace("S:", "🔴")
+    hold_colored = hold.replace("H:", "🟡")
+    return f"{buy_colored} |{sell_colored} |{hold_colored}"
 
 #Telegram message parser
 def handle(msg):
