@@ -445,19 +445,26 @@ def handle(msg):
                 if not line.strip():
                     continue
 
-                # Handle "No RL data" separately
+                # Handle "No RL data"
                 if "No RL data" in line:
-                    formatted_message.append(line.replace("|", "\n").replace("No RL data", "- No RL data"))
+                    formatted_message.append(line.split("|")[0].strip() + "\n- No RL data\n")
+                    continue
+
+                # Split into parts
+                parts = [p.strip() for p in line.split("|") if p.strip()]
+
+                if len(parts) == 5:
+                    market_info, buy, sell, hold, reward = parts
+                    formatted_message.append(
+                        f"{market_info}\n- {buy}  {sell}  {hold}\n- {reward}\n"
+                    )
+                elif len(parts) == 4:
+                    market_info, buy, sell, hold = parts
+                    formatted_message.append(
+                        f"{market_info}\n- {buy}  {sell}  {hold}\n"
+                    )
                 else:
-                    parts = [p.strip() for p in line.split("|") if p.strip()]
-                    if len(parts) == 3:
-                        market_info, q_values, reward = parts
-                        formatted_message.append(f"{market_info}\n{q_values}\n{reward}\n")
-                    elif len(parts) == 2:
-                        market_info, q_values = parts
-                        formatted_message.append(f"{market_info}\n{q_values}\n")
-                    else:
-                        formatted_message.append(line)
+                    formatted_message.append(line)
 
             message_to_send = "*RL Performance:*\n" + "\n".join(formatted_message)
             send(message_to_send)
