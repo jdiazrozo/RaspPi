@@ -5,7 +5,7 @@ from collections import defaultdict
 import telepot # type: ignore
 import requests
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv # type: ignore
 load_dotenv('/home/pi/keys/.env')
 
 chat_id = int(os.getenv("chat_id"))
@@ -70,7 +70,7 @@ def parse_forecast(forecast_data):
     return daily_data
 
 def create_forecast_message(parsed_data):
-    message = "📍 Donostia, ES\n🌤️ *Weather forecast:*\n"
+    message = "📍 Donostia, ES\n🌤️ *#Weather forecast:*\n"
     dates = list(parsed_data.keys())[:3]  # next 3 days
 
     for date in dates:

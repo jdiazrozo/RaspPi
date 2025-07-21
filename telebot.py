@@ -428,7 +428,7 @@ def handle(msg):
 
             # Prepare message
             performance_report = buffer.getvalue().strip()
-            send(f"*RL Performance:*\n{performance_report}", parse_mode='Markdown')
+            send(f"*RL Performance:*\n{performance_report}")
         except Exception as e:
             send(f"⚠️ Error generating RL performance: {e}")
 
