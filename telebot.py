@@ -456,12 +456,12 @@ def handle(msg):
                 if len(parts) == 5:
                     market_info, buy, sell, hold, reward = parts
                     formatted_message.append(
-                        f"{market_info}\n- {buy}  {sell}  {hold}\n- {reward}\n"
+                        f"*{market_info}*\n- {buy} | {sell} | {hold}\n- {reward}"
                     )
                 elif len(parts) == 4:
                     market_info, buy, sell, hold = parts
                     formatted_message.append(
-                        f"{market_info}\n- {buy}  {sell}  {hold}\n"
+                        f"*{market_info}*\n- {buy} | {sell} | {hold}"
                     )
                 else:
                     formatted_message.append(line)
