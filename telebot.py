@@ -18,6 +18,7 @@ STATE_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/state.json')
 sys.path.insert(0, RASPITRADER_PATH)
 import raspitrader as trader # type: ignore
 import trade_utils # type: ignore
+from trade_rl import load_q_table # type: ignore
 from dotenv import load_dotenv # type: ignore
 load_dotenv('/home/pi/keys/.env')
 
@@ -418,6 +419,7 @@ def handle(msg):
 
     elif msg['chat']['id'] == chat_id and command == '/rl_performance':
         try:
+            load_q_table()
             # Load state.json (current bot state)
             state = load_state_json(STATE_PATH)
             buffer = StringIO()
