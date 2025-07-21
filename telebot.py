@@ -444,10 +444,10 @@ def handle(msg):
             for line in lines[2:]:  # Skip [SUMMARY] and ------
                 if not line.strip():
                     continue
-                parts = [p.strip() for p in line.split("|") if p.strip()]
+
+                # Handle "No RL data" separately
                 if "No RL data" in line:
-                    market_info = line.split("→")[0].strip() + " → " + line.split("→")[1].split("|")[0].strip()
-                    formatted_message.append(f"{market_info}\n- No RL data\n")
+                    formatted_message.append(line.replace("|", "\n").replace("No RL data", "- No RL data"))
                 else:
                     parts = [p.strip() for p in line.split("|") if p.strip()]
                     if len(parts) == 3:
