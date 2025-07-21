@@ -430,19 +430,38 @@ def handle(msg):
             state = load_state_json(STATE_PATH)
 
             # Capture the printed output of global_performance
-            from io import StringIO
-            import sys
             buffer = StringIO()
             backup_stdout = sys.stdout
             sys.stdout = buffer
             trade_utils.global_performance(state)
             sys.stdout = backup_stdout
 
-            performance_report = buffer.getvalue().strip()
-            send(f"*RL Performance:*\n{performance_report}")
+
+            lines = buffer.getvalue().splitlines()
+
+            # Format markets for Telegram
+            formatted_message = []
+            for line in lines[2:]:  # Skip [SUMMARY] and ------
+                if not line.strip():
+                    continue
+                parts = line.split("|")
+                if len(parts) == 3:  # Market with Q-values + reward
+                    market_info = parts[0].strip()
+                    q_values = parts[1].strip()
+                    reward = parts[2].strip()
+                    formatted_message.append(f"{market_info}\n{q_values}\n{reward}\n")
+                elif len(parts) == 2:  # Market with Q-values but no reward
+                    market_info = parts[0].strip()
+                    q_values = parts[1].strip()
+                    formatted_message.append(f"{market_info}\n{q_values}\n")
+                else:
+                    formatted_message.append(line)
+
+            message_to_send = "*RL Performance:*\n" + "\n".join(formatted_message)
+            send(message_to_send)
         except Exception as e:
             send(f"⚠️ Error generating RL performance: {e}")
-
+    
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
             '*General Raspi services commands available:*\n'
