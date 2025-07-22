@@ -44,7 +44,9 @@ def get_city_name(lat, lon):
     try:
         data = requests.get(url).json()
         if data and "name" in data[0]:
-            return data[0]['name']
+            city = data[0]['name']
+            country = data[0].get('country', "")
+            return f"{city}, {country}" if country else city
         return "Unknown location"
     except Exception:
         return "Unknown location"
@@ -79,7 +81,7 @@ def parse_forecast(forecast_data):
     return daily_data
 
 def create_forecast_message(parsed_data, city_name="Donostia, ES"):
-    message = f"📍 {city_name}\n🌤️ *#Weather forecast:*\n"
+    message = f"🌤️ *#Weather forecast:*\n📍 *{city_name}*\n"
     dates = list(parsed_data.keys())[:3]  # next 3 days
 
     for date in dates:

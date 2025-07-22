@@ -174,7 +174,8 @@ def handle(msg):
         lon = msg['location']['longitude']
         send(f"📍 Location received: {lat:.4f}, {lon:.4f}. Fetching forecast...")
         result = os.popen(f'python /home/pi/personalapp/raspiapp/weathertwit.py {lat} {lon}').read()
-        send(f"Weather script output: {result}")
+        if result.strip():  # Only send output if something is returned (e.g., an error)
+            send(f"⚠️ Weather script returned:\n{result}")
         return
     
     comm = msg['text'].split()
