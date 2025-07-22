@@ -33,10 +33,8 @@ def telegram(msg):
     return
 
 #External Weather Conditions
-def get_forecast():
-    api_url="https://api.openweathermap.org/data/2.5/forecast?lat=%f&lon=%f&appid=%s&units=metric"
-    lat=43.3128
-    lon=-1.975
+def get_forecast(lat=43.3128, lon=-1.975):
+    api_url = "https://api.openweathermap.org/data/2.5/forecast?lat=%f&lon=%f&appid=%s&units=metric"
     query_url = api_url % (lat, lon, weather_key)
     data = requests.get(query_url).json()
     return data['list']
