@@ -15,7 +15,10 @@ RASPITRADER_PATH = os.path.join(BASE_DIR, 'crypto_trader')
 CRYPTO_VALUES_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values')
 sys.path.insert(0, CRYPTO_VALUES_PATH)
 STATE_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/state.json')
+RL_Q_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_q_table.pkl')
+RL_REWARD_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_reward_history.pkl')
 sys.path.insert(0, RASPITRADER_PATH)
+
 import raspitrader as trader # type: ignore
 import trade_utils # type: ignore
 from dotenv import load_dotenv # type: ignore
@@ -39,14 +42,17 @@ def save_state_json(path, data):
 def backup_state_file(original, backup):
     shutil.copy(original, backup)
 
-def restore_state_file():
+def restore_persistance():
     try:
-        backup_file = STATE_PATH + '.bak'
-        if os.path.exists(backup_file):
-            shutil.copy(backup_file, STATE_PATH)
+        if os.path.exists(STATE_PATH + '.bak'):
+            shutil.copy(STATE_PATH + '.bak', STATE_PATH)
             send("✅ state.json has been restored from backup.")
-        else:
-            send("❌ No backup file found.")
+        if os.path.exists(RL_Q_PATH + '.bak'):
+            shutil.copy(RL_Q_PATH + '.bak', RL_Q_PATH)
+            send("✅ RL Q-table restored from backup.")
+        if os.path.exists(RL_REWARD_PATH + '.bak'):
+            shutil.copy(RL_REWARD_PATH + '.bak', RL_REWARD_PATH)
+            send("✅ RL reward history restored from backup.")
     except Exception as e:
         send(f"⚠️ Error restoring backup: {e}")
 
@@ -254,7 +260,7 @@ def handle(msg):
     elif msg['chat']['id'] == chat_id and command == '/crypto_trade':
         send('🔄 Getting latest market data. Please wait few seconds...\n')
         trader.main()
-        restore_state_file()
+        restore_persistance()
 
     elif msg['chat']['id'] == chat_id and command == '/crypto_markets':
         trade_config = load_trade_config()
@@ -429,8 +435,9 @@ def handle(msg):
         except Exception as e:
             send(f"⚠️ Error retrieving symbols and keys: {e}")
 
-    elif msg['chat']['id'] == chat_id and command == '/restore_state_backup':
-        restore_state_file()
+    elif msg['chat']['id'] == chat_id and command == '/restore_persistance':
+        restore_persistance()
+        send("✅ Backups (State, Q-table and reward history) restored.")
 
     elif msg['chat']['id'] == chat_id and command == '/rl_performance':
         try:
@@ -515,7 +522,7 @@ def handle(msg):
             '/crypto_state → Get state.json.\n'
             '/list_state_keys → List of keys in json.\n'
             '/set_state → <symbol> <key> <value>.\n'
-            '/restore_state_backup → Restore json.\n'
+            '/restore_persistance → Restore backups.\n'
             '/crypto_markets → Configure markets.\n'
             '/trader_log → Send the raspitrader log file.\n'
             '/rl_performance → Get RL performance.\n'
