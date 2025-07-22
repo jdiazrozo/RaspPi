@@ -5,6 +5,7 @@ from collections import defaultdict
 import telepot # type: ignore
 import requests
 import os
+import sys
 from dotenv import load_dotenv # type: ignore
 load_dotenv('/home/pi/keys/.env')
 
@@ -40,6 +41,16 @@ def get_forecast():
     data = requests.get(query_url).json()
     return data['list']
 
+def get_city_name(lat, lon):
+    url = f"http://api.openweathermap.org/geo/1.0/reverse?lat={lat}&lon={lon}&limit=1&appid={weather_key}"
+    try:
+        data = requests.get(url).json()
+        if data and "name" in data[0]:
+            return data[0]['name']
+        return "Unknown location"
+    except Exception:
+        return "Unknown location"
+
 def parse_forecast(forecast_data):
     daily_data = defaultdict(lambda: {"morning": [], "evening": [], "min": [], "max": [], "rain": [], "wind": []})
 
@@ -69,8 +80,8 @@ def parse_forecast(forecast_data):
 
     return daily_data
 
-def create_forecast_message(parsed_data):
-    message = "📍 Donostia, ES\n🌤️ *#Weather forecast:*\n"
+def create_forecast_message(parsed_data, city_name="Donostia, ES"):
+    message = f"📍 {city_name}\n🌤️ *#Weather forecast:*\n"
     dates = list(parsed_data.keys())[:3]  # next 3 days
 
     for date in dates:
@@ -95,11 +106,17 @@ def create_forecast_message(parsed_data):
         )
     return message
 
-def send_forecast():
-    forecast_data = get_forecast()
+def send_forecast(lat=43.3128, lon=-1.975):
+    city_name = get_city_name(lat, lon)
+    forecast_data = get_forecast(lat, lon)
     parsed_data = parse_forecast(forecast_data)
-    message = create_forecast_message(parsed_data)
+    message = create_forecast_message(parsed_data, city_name)
     telegram(message)
 
 if __name__ == "__main__":
-    send_forecast()
+    if len(sys.argv) == 3:
+        lat, lon = float(sys.argv[1]), float(sys.argv[2])
+        send_forecast(lat, lon)
+    else:
+        # Default San Sebastian weather
+        send_forecast()

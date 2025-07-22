@@ -169,6 +169,13 @@ def format_qvalues(buy, sell, hold):
 
 #Telegram message parser
 def handle(msg):
+    if 'location' in msg:
+        lat = msg['location']['latitude']
+        lon = msg['location']['longitude']
+        send(f"📍 Location received: {lat:.4f}, {lon:.4f}. Fetching forecast...")
+        os.system(f'python /home/pi/personalapp/raspiapp/weathertwit.py {lat} {lon}')
+        return
+    
     comm = msg['text'].split()
     if len(comm) == 1:
         command = comm[0]
