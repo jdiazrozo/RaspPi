@@ -502,7 +502,7 @@ def handle(msg):
                     formatted_message.append(line)
 
             current_epsilon = load_rl_epsilon(DEFAULT_EPSILON)
-            message_to_send = f"*#Reinforcement Learning Performance:* (EPSILON={current_epsilon:.3f})\n" + "\n".join(formatted_message)
+            message_to_send = f"*#Reinforcement Learning Performance:* _(EPSILON={current_epsilon:.3f})_\n" + "\n".join(formatted_message)
             send(message_to_send)
         except Exception as e:
             send(f"⚠️ Error generating RL performance: {e}")
