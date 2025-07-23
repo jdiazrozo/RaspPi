@@ -511,10 +511,10 @@ def handle(msg):
                         f"*{market_info}*\n- {format_qvalues(buy, sell, hold)}\n- {reward_colored} | {visits_colored}"
                     )
                 elif len(parts) == 5:
-                    market_info, buy, sell, hold, reward = parts
-                    reward_colored = reward.replace("R", "🏆")
+                    market_info, buy, sell, hold, visits = parts
+                    visits_colored = visits.replace("V:", "📊 ")
                     formatted_message.append(
-                        f"*{market_info}*\n- {format_qvalues(buy, sell, hold)}\n- {reward_colored}"
+                        f"*{market_info}*\n- {format_qvalues(buy, sell, hold)}\n- {visits_colored}"
                     )
                 elif len(parts) == 4:
                     market_info, buy, sell, hold = parts
