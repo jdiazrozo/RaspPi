@@ -20,6 +20,7 @@ RL_REWARD_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_reward_history
 sys.path.insert(0, RASPITRADER_PATH)
 
 import raspitrader as trader # type: ignore
+from trade_config import EPSILON as DEFAULT_EPSILON # type: ignore
 import trade_utils # type: ignore
 from dotenv import load_dotenv # type: ignore
 load_dotenv('/home/pi/keys/.env')
@@ -443,6 +444,7 @@ def handle(msg):
         try:
             # Load Q-table and rewards
             from trade_rl import load_q_table, _reward_history # type: ignore
+            from trade_utils import load_rl_epsilon # type: ignore
 
             load_q_table()  # Load Q-values
             # Explicitly reload reward history
@@ -499,7 +501,8 @@ def handle(msg):
                 else:
                     formatted_message.append(line)
 
-            message_to_send = "*#Reinforcement Learning Performance:*\n" + "\n".join(formatted_message)
+            current_epsilon = load_rl_epsilon(DEFAULT_EPSILON)
+            message_to_send = f"*#Reinforcement Learning Performance:* (EPSILON={current_epsilon:.3f})\n" + "\n".join(formatted_message)
             send(message_to_send)
         except Exception as e:
             send(f"⚠️ Error generating RL performance: {e}")
