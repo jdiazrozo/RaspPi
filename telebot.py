@@ -442,7 +442,7 @@ def handle(msg):
     elif msg['chat']['id'] == chat_id and command == '/rl_performance':
         try:
             # Load Q-table and rewards
-            from trade_rl import load_q_table, _reward_history # type: ignore
+            from trade_rl import load_q_table, _reward_history, get_avg_visits_per_market # type: ignore
 
             load_q_table()  # Load Q-values
             # Explicitly reload reward history
@@ -461,6 +461,7 @@ def handle(msg):
 
 
             lines = buffer.getvalue().splitlines()
+            avg_visits_data = get_avg_visits_per_market()
 
             # Format markets for Telegram
             formatted_message = []
@@ -481,14 +482,15 @@ def handle(msg):
                 if len(parts) == 5:
                     market_info, buy, sell, hold, reward = parts
                     reward_colored = reward.replace("R", "🏆")
-
+                    visits_str = f" | 📊 {avg_visits_data.get(market_info.split()[0], 0)}"
                     formatted_message.append(
-                        f"*{market_info}*\n- {format_qvalues(buy, sell, hold)}\n- {reward_colored}"
+                        f"*{market_info}*\n- {format_qvalues(buy, sell, hold)}\n- {reward_colored}{visits_str}"
                     )
                 elif len(parts) == 4:
                     market_info, buy, sell, hold = parts
+                    visits_str = f" | 📊 {avg_visits_data.get(market_info.split()[0], 0)}"
                     formatted_message.append(
-                        f"*{market_info}*\n- {format_qvalues(buy, sell, hold)}"
+                        f"*{market_info}*\n- {format_qvalues(buy, sell, hold)}{visits_str}"
                     )
                 else:
                     formatted_message.append(line)
