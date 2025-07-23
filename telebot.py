@@ -17,6 +17,8 @@ sys.path.insert(0, CRYPTO_VALUES_PATH)
 STATE_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/state.json')
 RL_Q_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_q_table.pkl')
 RL_REWARD_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_reward_history.pkl')
+RL_VISITS_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_visits.pkl')
+RL_EPSILON_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_epsilon.pkl')
 sys.path.insert(0, RASPITRADER_PATH)
 
 import raspitrader as trader # type: ignore
@@ -53,6 +55,12 @@ def restore_persistance():
             send("✅ RL Q-table restored from backup.")
         if os.path.exists(RL_REWARD_PATH + '.bak'):
             shutil.copy(RL_REWARD_PATH + '.bak', RL_REWARD_PATH)
+            send("✅ RL reward history restored from backup.")
+        if os.path.exists(RL_VISITS_PATH + '.bak'):
+            shutil.copy(RL_VISITS_PATH + '.bak', RL_VISITS_PATH)
+            send("✅ RL reward history restored from backup.")
+        if os.path.exists(RL_EPSILON_PATH + '.bak'):
+            shutil.copy(RL_EPSILON_PATH + '.bak', RL_EPSILON_PATH)
             send("✅ RL reward history restored from backup.")
     except Exception as e:
         send(f"⚠️ Error restoring backup: {e}")
@@ -167,12 +175,27 @@ def vpn_info(vpn_user):
         user_info = user_db.loc[user_db['Name'] == vpn_user].values.flatten().tolist()
     return(user_info)
 
+# Format Q-values
 def format_qvalues(buy, sell, hold):
     """Format B, S, H with colored dot emojis."""
     buy_colored = buy.replace("B:", "🟢")
     sell_colored = sell.replace("S:", "🔴")
     hold_colored = hold.replace("H:", "🟡")
     return f"{buy_colored} |{sell_colored} |{hold_colored}"
+
+#Delete all RL persistance files
+def reset_rl_files():
+    """Delete all RL persistence files (Q-table, rewards, visits, epsilon)."""
+    files_to_delete = [RL_Q_PATH, RL_REWARD_PATH, RL_VISITS_PATH, RL_EPSILON_PATH]
+    removed = []
+    for file in files_to_delete:
+        try:
+            if os.path.exists(file):
+                os.remove(file)
+                removed.append(os.path.basename(file))
+        except Exception as e:
+            print(f"[WARN] Failed to remove {file}: {e}")
+    return removed
 
 #Telegram message parser
 def handle(msg):
@@ -506,6 +529,13 @@ def handle(msg):
             send(message_to_send)
         except Exception as e:
             send(f"⚠️ Error generating RL performance: {e}")
+
+    elif msg['chat']['id'] == chat_id and command == '/reset_rl':
+        removed_files = reset_rl_files()
+        if removed_files:
+            send(f"✅ RL data reset. Deleted: {', '.join(removed_files)}")
+        else:
+            send("ℹ️ No RL persistence files found to delete.")
     
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
@@ -535,6 +565,7 @@ def handle(msg):
             '/crypto_markets → Configure markets.\n'
             '/trader_log → Send the raspitrader log file.\n'
             '/rl_performance → Get RL performance.\n'
+            '/reset_rl → Reset persistance RL.\n'
         )
         send(message)
 
