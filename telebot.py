@@ -509,7 +509,7 @@ def handle(msg):
                     reward_colored = reward.replace("R", "🏆")
 
                     formatted_message.append(
-                        f"*{market_info}*\n🟢{b_section}|🔴{s_section}|🟡{h_section}\n- {reward_colored}"
+                        f"*{market_info}*\n- 🟢{b_section}\n- 🔴{s_section}\n- 🟡{h_section}\n- {reward_colored}"
                     )
                 else:
                     formatted_message.append(line)
