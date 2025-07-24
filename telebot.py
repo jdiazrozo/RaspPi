@@ -494,7 +494,8 @@ def handle(msg):
                     continue
 
                 if "No RL data" in line:
-                    formatted_message.append(line)
+                    market_info = line.split("|")[0].strip()  # e.g., "DOTUSDC    → +3.24%"
+                    formatted_message.append(f"*{market_info}*:\n- No RL data")
                     continue
 
                 # Split Q-values and rewards
@@ -508,7 +509,7 @@ def handle(msg):
                     reward_colored = reward.replace("R", "🏆")
 
                     formatted_message.append(
-                        f"{market_info}\n- 🟢{b_section} |🔴{s_section} |🟡{h_section}\n- {reward_colored}"
+                        f"*{market_info}*\n🟢{b_section}|🔴{s_section}|🟡{h_section}\n- {reward_colored}"
                     )
                 else:
                     formatted_message.append(line)
