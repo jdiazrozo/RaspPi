@@ -493,33 +493,22 @@ def handle(msg):
                 if not line.strip():
                     continue
 
-                # Handle "No RL data"
                 if "No RL data" in line:
-                    # Extract only the market and profit part (before '|')
-                    market_info = line.split("|")[0].strip()
-                    formatted_message.append(f"*{market_info}*\n- No RL data")
+                    formatted_message.append(line)
                     continue
 
-                # Split into parts
-                parts = [p.strip() for p in line.split("|") if p.strip()]
-
-                if len(parts) == 6:
-                    market_info, buy, sell, hold, visits, reward = parts
+                # Split Q-values and rewards
+                parts = line.split("|")
+                if len(parts) >= 4:
+                    market_info = parts[0].strip()
+                    b_section = parts[1].strip()
+                    s_section = parts[2].strip()
+                    h_section = parts[3].strip()
+                    reward = " | ".join(parts[4:]).strip() if len(parts) > 4 else ""
                     reward_colored = reward.replace("R", "🏆")
-                    visits_colored = visits.replace("V:", "📊 ")
+
                     formatted_message.append(
-                        f"*{market_info}*\n- {format_qvalues(buy, sell, hold)}\n- {reward_colored} | {visits_colored}"
-                    )
-                elif len(parts) == 5:
-                    market_info, buy, sell, hold, visits = parts
-                    visits_colored = visits.replace("V:", "📊 ")
-                    formatted_message.append(
-                        f"*{market_info}*\n- {format_qvalues(buy, sell, hold)}\n- {visits_colored}"
-                    )
-                elif len(parts) == 4:
-                    market_info, buy, sell, hold = parts
-                    formatted_message.append(
-                        f"*{market_info}*\n- {format_qvalues(buy, sell, hold)}"
+                        f"{market_info}\n- 🟢{b_section} |🔴{s_section} |🟡{h_section}\n- {reward_colored}"
                     )
                 else:
                     formatted_message.append(line)
@@ -562,10 +551,10 @@ def handle(msg):
             '/list_state_keys → List of keys in json.\n'
             '/set_state → <symbol> <key> <value>.\n'
             '/restore_persistance → Restore backups.\n'
+            '/reset_rl → Reset persistance RL files.\n'
             '/crypto_markets → Configure markets.\n'
             '/trader_log → Send the raspitrader log file.\n'
             '/rl_performance → Get RL performance.\n'
-            '/reset_rl → Reset persistance RL.\n'
         )
         send(message)
 
