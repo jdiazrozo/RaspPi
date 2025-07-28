@@ -526,6 +526,14 @@ def handle(msg):
             send(f"✅ RL data reset. Deleted: {', '.join(removed_files)}")
         else:
             send("ℹ️ No RL persistence files found to delete.")
+
+    elif msg['chat']['id'] == chat_id and command == '/reset_epsilon':
+        import trade_config as config # type: ignore
+        from trade_utils import save_rl_epsilon # type: ignore
+        
+        config.EPSILON = 0.1
+        save_rl_epsilon(config.EPSILON)
+        send(f"✅ EPSILON has been reset to {config.EPSILON:.3f}")
     
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
@@ -553,6 +561,7 @@ def handle(msg):
             '/set_state → <symbol> <key> <value>.\n'
             '/restore_persistance → Restore backups.\n'
             '/reset_rl → Reset persistance RL files.\n'
+            '/reset_epsilon → Reset EPSILON exploration.\n'
             '/crypto_markets → Configure markets.\n'
             '/trader_log → Send the raspitrader log file.\n'
             '/rl_performance → Get RL performance.\n'
