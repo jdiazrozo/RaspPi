@@ -18,6 +18,14 @@ TAPO_PASS = psutil.os.getenv("tapo_password")
 bot = telepot.Bot(telegram_key)
 
 # ----------------------------
+# Local Tapo Cameras with static IPs
+# ----------------------------
+TAPO_CAMERAS = {
+    "Salon": "192.168.1.36",
+    "Cocina": "192.168.1.37"
+}
+
+# ----------------------------
 # HELPER FUNCTIONS
 # ----------------------------
 def run_command(cmd):
@@ -157,18 +165,12 @@ def cpu_load():
 # ----------------------------
 # TAPO CAMERA CHECKS
 # ----------------------------
-def get_tapo_camera_statuses():
-    try:
-        tapo = Tapo(TAPO_USER, TAPO_PASS)
-        devices = tapo.list_devices()
-        statuses = {}
-        for device in devices:
-            name = device.get("alias", "Unknown")
-            status = "Online" if device.get("device_on", False) else "Offline"
-            statuses[name] = status
-        return statuses
-    except Exception as e:
-        return {"Error": f"Tapo API failed: {e}"}
+def check_camera(name, ip):
+    """Ping a camera to check if it's online."""
+    return "Online" if subprocess.call(f"ping -c 1 -W 2 {ip}",
+                                       shell=True,
+                                       stdout=subprocess.DEVNULL,
+                                       stderr=subprocess.DEVNULL) == 0 else "Offline"
     
 # ----------------------------
 # BUILD STATUS MESSAGE
@@ -187,8 +189,8 @@ cpu_usage_status, _ = cpu_usage()
 cpu_load_status, _ = cpu_load()
 
 # Camera statuses
-camera_statuses = get_tapo_camera_statuses()
-camera_status_text = "\n".join([f"• {name}: {status}" for name, status in camera_statuses.items()])
+camera_status_text = "\n".join([f"• {name}: {check_camera(name, ip)}"
+                                for name, ip in TAPO_CAMERAS.items()])
 
 message = (
     f"#CurrentStatus #PagolaPi {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
