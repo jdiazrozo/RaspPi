@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import telepot # type: ignore
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import shutil
 import psutil # type: ignore
@@ -16,15 +16,40 @@ bot = telepot.Bot(telegram_key)
 # SYSTEM CHECK FUNCTIONS
 # ----------------------------
 
+def get_uptime():
+    """Return uptime in human-readable format."""
+    try:
+        with open("/proc/uptime", "r") as f:
+            uptime_seconds = float(f.readline().split()[0])
+        uptime_str = str(timedelta(seconds=int(uptime_seconds)))
+        days, rest = divmod(uptime_seconds, 86400)
+        hours, rest = divmod(rest, 3600)
+        minutes = rest // 60
+        if days >= 1:
+            return f"{int(days)}d {int(hours)}h {int(minutes)}m"
+        return f"{int(hours)}h {int(minutes)}m"
+    except Exception:
+        return "ERROR"
+
 def startup_check(threshold_minutes=5):
     """Check if the system has just started."""
     try:
         uptime_seconds = float(open("/proc/uptime", "r").read().split()[0])
         if uptime_seconds < threshold_minutes * 60:
-            return f"🔄 System has just started (uptime: {int(uptime_seconds // 60)} min)"
+            return f"🔄 *System just started!*"
         return ""
     except Exception:
         return ""
+
+def shutdowns_last_24h():
+    """Count number of shutdowns or reboots in last 24h."""
+    try:
+        since = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M")
+        cmd = f"last -x | awk '$3 ~ /shutdown|reboot/ {{print $0}}' | grep -c ''"
+        count = os.popen(cmd).read().strip()
+        return count if count else "0"
+    except Exception:
+        return "ERROR"
 
 def hdd_check(path):
     return "OK" if os.path.ismount(path) else "NO-OK"
@@ -100,15 +125,13 @@ def network_check(host="8.8.8.8"):
 def updates_check():
     try:
         result = os.popen("apt list --upgradable 2>/dev/null | grep -v 'Listing...'").read().strip()
-        return "Available" if result else "None"
+        return "⚠️ Updates Available" if result else "OK"
     except Exception:
         return "ERROR"
 
 def failed_services():
     try:
         result = os.popen("systemctl --failed --no-legend | awk '{print $1}'").read().strip()
-        if "dhcpcd.service" in result:
-            result = result.replace("dhcpcd.service", "").strip()
         return result if result else "None"
     except Exception:
         return "ERROR"
@@ -122,7 +145,7 @@ def sd_card_health():
 
 def telegram(msg):
     try:
-        bot.sendMessage(chat_id, msg)
+        bot.sendMessage(chat_id, msg, parse_mode="Markdown")
     except Exception as e:
         print(f"Telegram error: {e}")
 
@@ -133,57 +156,38 @@ hdd1 = "/media/USBHDD1"
 hdd2 = "/media/USBHDD2"
 
 startup_msg = startup_check()
-updates_status = updates_check()
+hdd1_status, _ = disk_usage(hdd1)
+hdd2_status, _ = disk_usage(hdd2)
+root_status, _ = root_usage()
+temp_status, _ = temp_check()
+mem_status, _ = memory_usage()
+cpu_usage_status, _ = cpu_usage()
+cpu_load_status, _ = cpu_load()
 
-warnings = []
-
-hdd1_status, hdd1_warn = disk_usage(hdd1)
-hdd2_status, hdd2_warn = disk_usage(hdd2)
-root_status, root_warn = root_usage()
-
-temp_status, temp_warn = temp_check()
-mem_status, mem_warn = memory_usage()
-cpu_usage_status, cpu_usage_warn = cpu_usage()
-cpu_load_status, cpu_load_warn = cpu_load()
-
-if hdd1_warn: warnings.append(f"HDD1 low space: {hdd1_status}")
-if hdd2_warn: warnings.append(f"HDD2 low space: {hdd2_status}")
-if root_warn: warnings.append(f"Root FS low space: {root_status}")
-if temp_warn: warnings.append(f"High CPU temperature: {temp_status}")
-if mem_warn: warnings.append(f"Memory usage: {mem_status}")
-if cpu_usage_warn: warnings.append(f"CPU usage: {cpu_usage_status}")
-if cpu_load_warn: warnings.append(f"CPU load: {cpu_load_status}")
-if updates_status == "Available": warnings.append("OS updates available")
-if failed_services() != "None": warnings.append(f"Failed services: {failed_services()}")
-if sd_card_health() != "OK": warnings.append("SD card errors detected")
-
-# Summary header
-summary = f"#CurrentStatus #PagolaPi {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
-if startup_msg:
-    summary += startup_msg + "\n\n"
-
-if warnings:
-    summary += "⚠️ Issues detected:\n  - " + "\n  - ".join(warnings) + "\n\n"
-else:
-    summary += "✅ All systems are OK.\n\n"
-
-# Full detailed status
-details = (
-    f"- HDD1: {hdd_check(hdd1)} ({hdd1_status})\n"
-    f"- HDD2: {hdd_check(hdd2)} ({hdd2_status})\n"
-    f"- HDD Health: {hdd_health()}\n"
-    f"- Root FS: {root_status}\n"
-    f"- VPN service: {vpn_check()}\n"
-    f"- MiniDLNA service: {dlna_check()}\n"
-    f"- Network: {network_check()}\n"
-    f"- CPU temperature: {temp_status}\n"
-    f"- CPU usage: {cpu_usage_status}\n"
-    f"- CPU load: {cpu_load_status}\n"
-    f"- Throttling: {throttling_check()}\n"
-    f"- Memory usage: {mem_status}\n"
-    f"- OS updates: {'⚠️ Updates Available' if updates_status == 'Available' else '✅ None'}\n"
-    f"- Failed services: {failed_services()}\n"
-    f"- SD card health: {sd_card_health()}"
+message = (
+    f"#CurrentStatus #PagolaPi {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
+    + (startup_msg + "\n\n" if startup_msg else "")
+    + f"📊 *System Health:*\n"
+    + f"• Uptime: {get_uptime()}\n"
+    + f"• Shutdowns (last 24h): {shutdowns_last_24h()}\n"
+    + f"• OS updates: {updates_check()}\n"
+    + f"• Failed services: {failed_services()}\n"
+    + f"• SD card: {sd_card_health()}\n\n"
+    + f"🖴 *Storage:*\n"
+    + f"• HDD1: {hdd_check(hdd1)} ({hdd1_status})\n"
+    + f"• HDD2: {hdd_check(hdd2)} ({hdd2_status})\n"
+    + f"• HDD Health: {hdd_health()}\n"
+    + f"• Root FS: {root_status}\n\n"
+    + f"🌐 *Network:*\n"
+    + f"• VPN: {vpn_check()}\n"
+    + f"• MiniDLNA: {dlna_check()}\n"
+    + f"• Connectivity: {network_check()}\n\n"
+    + f"🔥 *CPU & Memory:*\n"
+    + f"• Temperature: {temp_status}\n"
+    + f"• CPU usage: {cpu_usage_status}\n"
+    + f"• CPU load: {cpu_load_status}\n"
+    + f"• Throttling: {throttling_check()}\n"
+    + f"• Memory: {mem_status}"
 )
 
-telegram(summary + details)
+telegram(message)
