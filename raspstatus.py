@@ -96,7 +96,24 @@ def temp_check():
         return "ERROR", True
 
 def throttling_check():
-    return THROTTLE_OUTPUT or "ERROR"
+    """Decode and return a readable throttling status."""
+    try:
+        status = THROTTLE_OUTPUT.split('=')[1]
+        val = int(status, 16)
+        if val == 0:
+            return "OK"
+        messages = []
+        if val & 0x1: messages.append("⚠️ Under-voltage")
+        if val & 0x2: messages.append("⚠️ ARM freq capped")
+        if val & 0x4: messages.append("⚠️ Throttling active")
+        if val & 0x8: messages.append("⚠️ Temp limit active")
+        if val & 0x10000: messages.append("Under-voltage occurred")
+        if val & 0x20000: messages.append("Freq cap occurred")
+        if val & 0x40000: messages.append("Throttling occurred")
+        if val & 0x80000: messages.append("Temp limit occurred")
+        return ", ".join(messages)
+    except Exception:
+        return "ERROR"
 
 def updates_check():
     return "⚠️ Updates Available" if UPDATES_OUTPUT else "OK"
