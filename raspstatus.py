@@ -70,6 +70,10 @@ def check_service(proc_name):
     """Generic service checker using pgrep."""
     return "OK" if subprocess.call(f"pgrep {proc_name}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0 else "NO-OK"
 
+def network_check(host="8.8.8.8"):
+    """Check network connectivity."""
+    return "OK" if subprocess.call(f"ping -c 1 -W 2 {host}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0 else "NO-OK"
+
 # ----------------------------
 # CACHED COMMANDS
 # ----------------------------
@@ -109,6 +113,22 @@ def failed_services(ignore_list=None):
 def sd_card_health():
     return "⚠️ Errors detected" if DMESG_ERRORS else "OK"
 
+def memory_usage():
+    mem = psutil.virtual_memory()
+    warn = mem.percent > 80
+    return f"{mem.percent:.1f}% used" + (" ⚠️ High" if warn else ""), warn
+
+def cpu_usage():
+    usage = psutil.cpu_percent(interval=0.5)
+    warn = usage > 85
+    return f"{usage:.1f}%" + (" ⚠️ High" if warn else ""), warn
+
+def cpu_load():
+    load1, load5, load15 = psutil.getloadavg()
+    cores = psutil.cpu_count(logical=True) or 1
+    warn = load1 > cores * 1.5
+    return f"{load1:.2f} (1m), {load5:.2f} (5m), {load15:.2f} (15m)" + (" ⚠️ High" if warn else ""), warn
+
 # ----------------------------
 # BUILD STATUS MESSAGE
 # ----------------------------
@@ -116,39 +136,39 @@ hdd1 = "/media/USBHDD1"
 hdd2 = "/media/USBHDD2"
 
 startup_msg = startup_check()
+
 hdd1_status, _ = disk_usage(hdd1)
 hdd2_status, _ = disk_usage(hdd2)
 root_status, _ = disk_usage("/")
 temp_status, _ = temp_check()
-mem_status, _ = memory_usage = (lambda: (f"{psutil.virtual_memory().percent:.1f}% used", psutil.virtual_memory().percent > 80))()
-cpu_usage_status, _ = cpu_usage = (lambda: (f"{psutil.cpu_percent(interval=0.5):.1f}%", psutil.cpu_percent(interval=0.5) > 85))()
-cpu_load1, cpu_load5, cpu_load15 = psutil.getloadavg()
-cpu_load_status = f"{cpu_load1:.2f} (1m), {cpu_load5:.2f} (5m), {cpu_load15:.2f} (15m)"
+mem_status, _ = memory_usage()
+cpu_usage_status, _ = cpu_usage()
+cpu_load_status, _ = cpu_load()
 
 message = (
     f"#CurrentStatus #PagolaPi {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
     + (startup_msg + "\n\n" if startup_msg else "")
-    + f"📊 System Health:\n"
+    + f"📊 *System Health*:\n"
     + f"• Uptime: {get_uptime()}\n"
     + f"• Shutdowns (last 24h): {shutdowns_last_24h()}\n"
     + f"• OS updates: {updates_check()}\n"
     + f"• Failed services: {failed_services()}\n"
     + f"• SD card: {sd_card_health()}\n\n"
-    + f"🖴 Storage:\n"
+    + f"💾 *Storage*:\n"
     + f"• HDD1: {hdd_check(hdd1)} ({hdd1_status})\n"
     + f"• HDD2: {hdd_check(hdd2)} ({hdd2_status})\n"
     + f"• HDD Health: {hdd_health()}\n"
     + f"• Root FS: {root_status}\n\n"
-    + f"🌐 Network:\n"
+    + f"🌐 *Network*:\n"
     + f"• VPN: {check_service('wg')}\n"
     + f"• MiniDLNA: {check_service('minidlna')}\n"
     + f"• Connectivity: {network_check()}\n\n"
-    + f"🔥 CPU & Memory:\n"
+    + f"🔥 *CPU & Memory*:\n"
     + f"• Temperature: {temp_status}\n"
-    + f"• CPU usage: {cpu_usage[0]}\n"
+    + f"• CPU usage: {cpu_usage_status}\n"
     + f"• CPU load: {cpu_load_status}\n"
     + f"• Throttling: {throttling_check()}\n"
-    + f"• Memory: {memory_usage[0]}"
+    + f"• Memory: {mem_status}"
 )
 
 def telegram(msg):
