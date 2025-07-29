@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import shutil
 import subprocess
 import psutil # type: ignore
+from tapo import Tapo # type: ignore
 from dotenv import load_dotenv # type: ignore
 
 # ----------------------------
@@ -12,6 +13,8 @@ from dotenv import load_dotenv # type: ignore
 load_dotenv('/home/pi/keys/.env')
 chat_id = int(psutil.os.getenv("chat_id"))
 telegram_key = psutil.os.getenv("telegram_key")
+TAPO_USER = psutil.os.getenv("tapo_user")
+TAPO_PASS = psutil.os.getenv("tapo_password")
 bot = telepot.Bot(telegram_key)
 
 # ----------------------------
@@ -152,6 +155,22 @@ def cpu_load():
     return f"{load1:.2f} (1m), {load5:.2f} (5m), {load15:.2f} (15m)" + (" ⚠️ High" if warn else ""), warn
 
 # ----------------------------
+# TAPO CAMERA CHECKS
+# ----------------------------
+def get_tapo_camera_statuses():
+    try:
+        tapo = Tapo(TAPO_USER, TAPO_PASS)
+        devices = tapo.list_devices()
+        statuses = {}
+        for device in devices:
+            name = device.get("alias", "Unknown")
+            status = "Online" if device.get("device_on", False) else "Offline"
+            statuses[name] = status
+        return statuses
+    except Exception as e:
+        return {"Error": f"Tapo API failed: {e}"}
+
+# ----------------------------
 # BUILD STATUS MESSAGE
 # ----------------------------
 hdd1 = "/media/USBHDD1"
@@ -166,6 +185,10 @@ temp_status, _ = temp_check()
 mem_status, _ = memory_usage()
 cpu_usage_status, _ = cpu_usage()
 cpu_load_status, _ = cpu_load()
+
+# Camera statuses
+camera_statuses = get_tapo_camera_statuses()
+camera_status_text = "\n".join([f"• {name}: {status}" for name, status in camera_statuses.items()])
 
 message = (
     f"#CurrentStatus #PagolaPi {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
@@ -185,6 +208,8 @@ message = (
     + f"• VPN: {check_service('wg')}\n"
     + f"• MiniDLNA: {check_service('minidlna')}\n"
     + f"• Connectivity: {network_check()}\n\n"
+    + f"📷 *Cameras*:\n"
+    + camera_status_text + "\n\n"
     + f"🔥 *CPU & Memory*:\n"
     + f"• Temperature: {temp_status}\n"
     + f"• CPU usage: {cpu_usage_status}\n"
