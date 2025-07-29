@@ -131,7 +131,10 @@ def throttling_check():
         return "ERROR"
 
 def updates_check():
-    return "⚠️ Updates Available" if UPDATES_OUTPUT else "OK"
+    if not UPDATES_OUTPUT:
+        return "OK"
+    updates_count = len(UPDATES_OUTPUT.splitlines())
+    return f"⚠️ {updates_count} Updates Available"
 
 def failed_services(ignore_list=None):
     """Return failed services excluding ignored ones."""
@@ -158,7 +161,7 @@ def cpu_usage():
 def cpu_load():
     load1, load5, load15 = psutil.getloadavg()
     cores = psutil.cpu_count(logical=True) or 1
-    warn = load1 > cores * 1.5
+    warn = load1 > cores * 2.0  # Adjusted threshold
     return f"{load1:.2f} (1m), {load5:.2f} (5m), {load15:.2f} (15m)" + (" ⚠️ High" if warn else ""), warn
 
 # ----------------------------
