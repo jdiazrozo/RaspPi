@@ -107,37 +107,6 @@ def update_markets(new_markets):
     with open(config_file_path, 'w') as file:
         file.write(new_content)
 
-#Check if external HDD are mounted
-def hdd_check(path):
-    hdd_mnt = os.path.ismount(path)
-    if hdd_mnt:
-        hdd_state = "OK"
-    else:
-        hdd_state = "NO-OK"
-    return(hdd_state)
-
-#Check if VPN service is running
-def vpn_check():
-    if not bool(os.system('ps aux | pgrep wg')):
-        status = "OK"
-    else:
-        status = "NO-OK"
-    return(status)
-
-#Check if minidlna service is running
-def dlna_check():
-    if not bool(os.system('ps aux | pgrep minidlna')):
-        status = "OK"
-    else:
-        status = "NO-OK"
-    return(status)
-
-#Check Raspi Temperature
-def temp_check():
-    status = os.popen('vcgencmd measure_temp').readline()
-    status = status.split("=",1)[1]
-    return(status)
-
 #Check Network speed
 def speed_check():
     speed = os.popen('speedtest-cli --simple').read()
@@ -220,31 +189,12 @@ def handle(msg):
         send('Restarting RasPi, see you...')
         os.system('sudo reboot now')
 
-    elif msg['chat']['id'] == chat_id and command == '/vpn':
-        status = vpn_check()
-        send('VPN service is: ' + status)
-
-    elif msg['chat']['id'] == chat_id and command == '/dlna':
-        status = dlna_check()
-        send('MiniDLNA service is: ' + status)
-
-    elif msg['chat']['id'] == chat_id and command == '/temp':
-        status = temp_check()
-        send('CPU temperature is: ' + status)
-
     elif msg['chat']['id'] == chat_id and command == '/speed':
         send('Speed test in progress. This may take 30 seconds...\n')
         status = speed_check()
         message = '- ' + status[0] + '\n' +\
                   '- ' + status[1] + '\n' +\
                   '- ' + status[2]
-        send(message)
-
-    elif msg['chat']['id'] == chat_id and command == '/hdd':
-        hdd1 = '/media/USBHDD1'
-        hdd2 = '/media/USBHDD2'
-        message = '- HDD1 unit is: ' + hdd_check(hdd1) + '\n' +\
-                  '- HDD2 unit is: ' + hdd_check(hdd2)
         send(message)
 
     elif msg['chat']['id'] == chat_id and command == '/reload':
@@ -271,6 +221,9 @@ def handle(msg):
 
     elif msg['chat']['id'] == chat_id and command == '/weather':
         os.popen('python /home/pi/personalapp/raspiapp/weathertwit.py')
+
+    elif msg['chat']['id'] == chat_id and command == '/raspi_status':
+        os.popen('python /home/pi/personalapp/raspiapp/raspstatus.py')
 
     elif msg['chat']['id'] == chat_id and command == '/crypto':
         message = '#Crypto current free value:\n'
@@ -538,14 +491,11 @@ def handle(msg):
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
             '*General Raspi services commands available:*\n'
+            '/raspi_status → Get Pagolapi status.\n'
             '/update_raspibot → Update Telebot service.\n'
             '/reboot → Reboot Raspi.\n'
-            '/vpn → VPN service status.\n'
             '/vpn_users → Get list of VPN users.\n'
             '/vpn_info user → Get info about VPN users.\n'
-            '/hdd → HDD units status.\n'
-            '/dlna → MiniDLNA service status.\n'
-            '/temp → CPU temperature.\n'
             '/reload → Index miniDLNA catalog.\n'
             '/telebot_log → Send the telebot log file.\n'
             '/backup_log → Send the Rsync log file.\n'
