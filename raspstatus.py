@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 import shutil
 import subprocess
 import psutil # type: ignore
-from tapo.tapo import Tapo # type: ignore
 from dotenv import load_dotenv # type: ignore
 
 # ----------------------------
