@@ -1,59 +1,59 @@
 #!/usr/bin/env python3
 import telepot # type: ignore
-from datetime import datetime, timedelta
-import os
+from datetime import datetime
 import shutil
+import subprocess
 import psutil # type: ignore
 from dotenv import load_dotenv # type: ignore
 
-# Load environment variables
+# ----------------------------
+# ENVIRONMENT
+# ----------------------------
 load_dotenv('/home/pi/keys/.env')
-chat_id = int(os.getenv("chat_id"))
-telegram_key = os.getenv("telegram_key")
+chat_id = int(psutil.os.getenv("chat_id"))
+telegram_key = psutil.os.getenv("telegram_key")
 bot = telepot.Bot(telegram_key)
 
 # ----------------------------
-# SYSTEM CHECK FUNCTIONS
+# HELPER FUNCTIONS
 # ----------------------------
+def run_command(cmd):
+    """Run a shell command and return its output (stripped)."""
+    try:
+        return subprocess.run(cmd, shell=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL).stdout.strip()
+    except Exception:
+        return ""
 
 def get_uptime():
     """Return uptime in human-readable format."""
     try:
         with open("/proc/uptime", "r") as f:
             uptime_seconds = float(f.readline().split()[0])
-        days, rest = divmod(uptime_seconds, 86400)
+        days, rest = divmod(int(uptime_seconds), 86400)
         hours, rest = divmod(rest, 3600)
-        minutes = int(rest // 60)
-        if days >= 1:
-            return f"{int(days)}d {int(hours)}h {minutes}m"
-        return f"{int(hours)}h {minutes}m"
+        minutes = rest // 60
+        return f"{days}d {hours}h {minutes}m" if days else f"{hours}h {minutes}m"
     except Exception:
         return "ERROR"
 
 def startup_check(threshold_minutes=5):
-    """Check if the system has just started."""
+    """Return startup message if system rebooted recently."""
     try:
         uptime_seconds = float(open("/proc/uptime", "r").read().split()[0])
-        if uptime_seconds < threshold_minutes * 60:
-            return f"🔄 *System just started!*"
-        return ""
+        return "🔄 *System just started!*" if uptime_seconds < threshold_minutes * 60 else ""
     except Exception:
         return ""
 
 def shutdowns_last_24h():
-    """Count number of shutdowns or reboots in last 24h."""
-    try:
-        since = (datetime.now() - timedelta(hours=24)).strftime("%b %_d")
-        cmd = f"last -x | grep -E 'shutdown|reboot' | grep '{since}' | wc -l"
-        count = os.popen(cmd).read().strip()
-        return count if count else "0"
-    except Exception:
-        return "ERROR"
+    """Count shutdown or reboot events in last 24 hours."""
+    cmd = "last -x | grep -E 'shutdown|reboot' | grep -c ''"
+    return run_command(cmd) or "0"
 
 def hdd_check(path):
-    return "OK" if os.path.ismount(path) else "NO-OK"
+    return "OK" if shutil.os.path.ismount(path) else "NO-OK"
 
 def disk_usage(path, warn_limit_gb=10):
+    """Check disk usage and return free space with warning."""
     try:
         total, used, free = shutil.disk_usage(path)
         free_gb = free // (2**30)
@@ -61,98 +61,56 @@ def disk_usage(path, warn_limit_gb=10):
     except Exception:
         return "ERROR", True
 
-def root_usage(warn_limit_gb=2):
-    return disk_usage("/", warn_limit_gb)
-
 def hdd_health(device="/dev/sda"):
-    try:
-        output = os.popen(f"sudo smartctl -H {device} 2>/dev/null | grep 'PASSED'").read().strip()
-        return "OK" if "PASSED" in output else "⚠️ Check Disk"
-    except Exception:
-        return "N/A"
+    """Check HDD health via smartctl."""
+    output = run_command(f"sudo smartctl -H {device} | grep 'PASSED'")
+    return "OK" if "PASSED" in output else "⚠️ Check Disk"
 
-def vpn_check():
-    return "OK" if os.system("pgrep wg > /dev/null") == 0 else "NO-OK"
+def check_service(proc_name):
+    """Generic service checker using pgrep."""
+    return "OK" if subprocess.call(f"pgrep {proc_name}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0 else "NO-OK"
 
-def dlna_check():
-    return "OK" if os.system("pgrep minidlna > /dev/null") == 0 else "NO-OK"
+# ----------------------------
+# CACHED COMMANDS
+# ----------------------------
+VCGENCMD = run_command('vcgencmd measure_temp && vcgencmd get_throttled')
+TEMP_OUTPUT = VCGENCMD.splitlines()[0] if VCGENCMD else "temp=0'C"
+THROTTLE_OUTPUT = VCGENCMD.splitlines()[1] if len(VCGENCMD.splitlines()) > 1 else "throttled=0x0"
 
+UPDATES_OUTPUT = run_command("apt list --upgradable 2>/dev/null | grep -v 'Listing...'")
+FAILED_SERVICES_RAW = run_command("systemctl --failed --no-legend | awk '{print $1}'")
+DMESG_ERRORS = run_command("dmesg | grep -iE 'mmc0.*(error|fail|I/O)'")
+
+# ----------------------------
+# CHECKS USING CACHE
+# ----------------------------
 def temp_check():
     try:
-        temp_str = os.popen('vcgencmd measure_temp').read().strip()
-        temp_val = float(temp_str.split('=')[1].split("'")[0])
-        warn = temp_val > 70
-        return f"{temp_val}°C" + (" ⚠️ HOT!" if warn else ""), warn
+        temp_val = float(TEMP_OUTPUT.split('=')[1].split("'")[0])
+        return f"{temp_val}°C" + (" ⚠️ HOT!" if temp_val > 70 else ""), temp_val > 70
     except Exception:
         return "ERROR", True
 
 def throttling_check():
-    try:
-        status = os.popen("vcgencmd get_throttled").read().strip()
-        return "OK" if status == "throttled=0x0" else f"⚠️ {status}"
-    except Exception:
-        return "ERROR"
-
-def memory_usage():
-    try:
-        mem = psutil.virtual_memory()
-        warn = mem.percent > 80
-        return f"{mem.percent}% used" + (" ⚠️ High" if warn else ""), warn
-    except Exception:
-        return "ERROR", True
-
-def cpu_usage():
-    try:
-        usage = psutil.cpu_percent(interval=1)
-        warn = usage > 85
-        return f"{usage}%" + (" ⚠️ High" if warn else ""), warn
-    except Exception:
-        return "ERROR", True
-
-def cpu_load():
-    try:
-        load1, load5, load15 = os.getloadavg()
-        cores = os.cpu_count() or 1
-        warn = load1 > cores * 1.5
-        return f"{load1:.2f} (1m), {load5:.2f} (5m), {load15:.2f} (15m)" + (" ⚠️ High" if warn else ""), warn
-    except Exception:
-        return "ERROR", True
-
-def network_check(host="8.8.8.8"):
-    return "OK" if os.system(f"ping -c 1 -W 2 {host} > /dev/null 2>&1") == 0 else "NO-OK"
+    return THROTTLE_OUTPUT or "ERROR"
 
 def updates_check():
-    try:
-        result = os.popen("apt list --upgradable 2>/dev/null | grep -v 'Listing...'").read().strip()
-        return "⚠️ Updates Available" if result else "OK"
-    except Exception:
-        return "ERROR"
+    return "⚠️ Updates Available" if UPDATES_OUTPUT else "OK"
 
-def failed_services():
-    try:
-        result = os.popen("systemctl --failed --no-legend | awk '{print $1}'").read().strip()
-        # Filter out irrelevant services
-        ignored = ["dhcpcd.service"]
-        services = [s for s in result.split() if s not in ignored]
-        return ", ".join(services) if services else "None"
-    except Exception:
-        return "ERROR"
+def failed_services(ignore_list=None):
+    """Return failed services excluding ignored ones."""
+    if ignore_list is None:
+        ignore_list = ["dhcpcd.service"]
+    if not FAILED_SERVICES_RAW:
+        return "None"
+    services = [s for s in FAILED_SERVICES_RAW.splitlines() if s not in ignore_list]
+    return ", ".join(services) if services else "None"
 
 def sd_card_health():
-    try:
-        errors = os.popen("dmesg | grep -iE 'mmc0.*(error|fail|I/O)'").read().strip()
-        return "⚠️ Errors detected" if errors else "OK"
-    except Exception:
-        return "ERROR"
-
-def telegram(msg):
-    try:
-        bot.sendMessage(chat_id, msg, parse_mode="Markdown")
-    except Exception as e:
-        print(f"Telegram error: {e}")
+    return "⚠️ Errors detected" if DMESG_ERRORS else "OK"
 
 # ----------------------------
-# BUILD MESSAGE
+# BUILD STATUS MESSAGE
 # ----------------------------
 hdd1 = "/media/USBHDD1"
 hdd2 = "/media/USBHDD2"
@@ -160,36 +118,43 @@ hdd2 = "/media/USBHDD2"
 startup_msg = startup_check()
 hdd1_status, _ = disk_usage(hdd1)
 hdd2_status, _ = disk_usage(hdd2)
-root_status, _ = root_usage()
+root_status, _ = disk_usage("/")
 temp_status, _ = temp_check()
-mem_status, _ = memory_usage()
-cpu_usage_status, _ = cpu_usage()
-cpu_load_status, _ = cpu_load()
+mem_status, _ = memory_usage = (lambda: (f"{psutil.virtual_memory().percent:.1f}% used", psutil.virtual_memory().percent > 80))()
+cpu_usage_status, _ = cpu_usage = (lambda: (f"{psutil.cpu_percent(interval=0.5):.1f}%", psutil.cpu_percent(interval=0.5) > 85))()
+cpu_load1, cpu_load5, cpu_load15 = psutil.getloadavg()
+cpu_load_status = f"{cpu_load1:.2f} (1m), {cpu_load5:.2f} (5m), {cpu_load15:.2f} (15m)"
 
 message = (
     f"#CurrentStatus #PagolaPi {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
     + (startup_msg + "\n\n" if startup_msg else "")
-    + f"📊 **System Health**\n"
-    + f"• ⏱ Uptime: {get_uptime()}\n"
-    + f"• 🔌 Shutdowns (last 24h): {shutdowns_last_24h()}\n"
-    + f"• 🛠 OS updates: {updates_check()}\n"
-    + f"• ❗ Failed services: {failed_services()}\n"
-    + f"• 💾 SD card: {sd_card_health()}\n\n"
-    + f"🖴 **Storage**\n"
+    + f"📊 System Health:\n"
+    + f"• Uptime: {get_uptime()}\n"
+    + f"• Shutdowns (last 24h): {shutdowns_last_24h()}\n"
+    + f"• OS updates: {updates_check()}\n"
+    + f"• Failed services: {failed_services()}\n"
+    + f"• SD card: {sd_card_health()}\n\n"
+    + f"🖴 Storage:\n"
     + f"• HDD1: {hdd_check(hdd1)} ({hdd1_status})\n"
     + f"• HDD2: {hdd_check(hdd2)} ({hdd2_status})\n"
     + f"• HDD Health: {hdd_health()}\n"
     + f"• Root FS: {root_status}\n\n"
-    + f"🌐 **Network**\n"
-    + f"• 🔒 VPN: {vpn_check()}\n"
-    + f"• 📺 MiniDLNA: {dlna_check()}\n"
-    + f"• 🌍 Connectivity: {network_check()}\n\n"
-    + f"🔥 **CPU & Memory**\n"
-    + f"• 🌡 Temperature: {temp_status}\n"
-    + f"• 🧮 CPU usage: {cpu_usage_status}\n"
-    + f"• 📈 CPU load: {cpu_load_status}\n"
-    + f"• ⚡ Throttling: {throttling_check()}\n"
-    + f"• 🧠 Memory: {mem_status}"
+    + f"🌐 Network:\n"
+    + f"• VPN: {check_service('wg')}\n"
+    + f"• MiniDLNA: {check_service('minidlna')}\n"
+    + f"• Connectivity: {network_check()}\n\n"
+    + f"🔥 CPU & Memory:\n"
+    + f"• Temperature: {temp_status}\n"
+    + f"• CPU usage: {cpu_usage[0]}\n"
+    + f"• CPU load: {cpu_load_status}\n"
+    + f"• Throttling: {throttling_check()}\n"
+    + f"• Memory: {memory_usage[0]}"
 )
+
+def telegram(msg):
+    try:
+        bot.sendMessage(chat_id, msg, parse_mode="Markdown")
+    except Exception as e:
+        print(f"Telegram error: {e}")
 
 telegram(message)
