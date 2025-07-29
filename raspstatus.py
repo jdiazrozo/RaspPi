@@ -131,9 +131,10 @@ def throttling_check():
         return "ERROR"
 
 def updates_check():
-    if not UPDATES_OUTPUT:
+    lines = [line for line in UPDATES_OUTPUT.splitlines() if line and not line.startswith("Listando") and not line.startswith("Listing")]
+    if not lines:
         return "OK"
-    updates_count = len(UPDATES_OUTPUT.splitlines())
+    updates_count = len(lines)
     return f"⚠️ {updates_count} Updates Available"
 
 def failed_services(ignore_list=None):
