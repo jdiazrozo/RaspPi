@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import telepot # type: ignore
 from datetime import datetime, timedelta
 import os
@@ -21,13 +21,12 @@ def get_uptime():
     try:
         with open("/proc/uptime", "r") as f:
             uptime_seconds = float(f.readline().split()[0])
-        uptime_str = str(timedelta(seconds=int(uptime_seconds)))
         days, rest = divmod(uptime_seconds, 86400)
         hours, rest = divmod(rest, 3600)
-        minutes = rest // 60
+        minutes = int(rest // 60)
         if days >= 1:
-            return f"{int(days)}d {int(hours)}h {int(minutes)}m"
-        return f"{int(hours)}h {int(minutes)}m"
+            return f"{int(days)}d {int(hours)}h {minutes}m"
+        return f"{int(hours)}h {minutes}m"
     except Exception:
         return "ERROR"
 
@@ -44,8 +43,8 @@ def startup_check(threshold_minutes=5):
 def shutdowns_last_24h():
     """Count number of shutdowns or reboots in last 24h."""
     try:
-        since = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M")
-        cmd = f"last -x | awk '$3 ~ /shutdown|reboot/ {{print $0}}' | grep -c ''"
+        since = (datetime.now() - timedelta(hours=24)).strftime("%b %_d")
+        cmd = f"last -x | grep -E 'shutdown|reboot' | grep '{since}' | wc -l"
         count = os.popen(cmd).read().strip()
         return count if count else "0"
     except Exception:
@@ -132,7 +131,10 @@ def updates_check():
 def failed_services():
     try:
         result = os.popen("systemctl --failed --no-legend | awk '{print $1}'").read().strip()
-        return result if result else "None"
+        # Filter out irrelevant services
+        ignored = ["dhcpcd.service"]
+        services = [s for s in result.split() if s not in ignored]
+        return ", ".join(services) if services else "None"
     except Exception:
         return "ERROR"
 
@@ -167,27 +169,27 @@ cpu_load_status, _ = cpu_load()
 message = (
     f"#CurrentStatus #PagolaPi {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
     + (startup_msg + "\n\n" if startup_msg else "")
-    + f"📊 *System Health:*\n"
-    + f"• Uptime: {get_uptime()}\n"
-    + f"• Shutdowns (last 24h): {shutdowns_last_24h()}\n"
-    + f"• OS updates: {updates_check()}\n"
-    + f"• Failed services: {failed_services()}\n"
-    + f"• SD card: {sd_card_health()}\n\n"
-    + f"🖴 *Storage:*\n"
+    + f"📊 **System Health**\n"
+    + f"• ⏱ Uptime: {get_uptime()}\n"
+    + f"• 🔌 Shutdowns (last 24h): {shutdowns_last_24h()}\n"
+    + f"• 🛠 OS updates: {updates_check()}\n"
+    + f"• ❗ Failed services: {failed_services()}\n"
+    + f"• 💾 SD card: {sd_card_health()}\n\n"
+    + f"🖴 **Storage**\n"
     + f"• HDD1: {hdd_check(hdd1)} ({hdd1_status})\n"
     + f"• HDD2: {hdd_check(hdd2)} ({hdd2_status})\n"
     + f"• HDD Health: {hdd_health()}\n"
     + f"• Root FS: {root_status}\n\n"
-    + f"🌐 *Network:*\n"
-    + f"• VPN: {vpn_check()}\n"
-    + f"• MiniDLNA: {dlna_check()}\n"
-    + f"• Connectivity: {network_check()}\n\n"
-    + f"🔥 *CPU & Memory:*\n"
-    + f"• Temperature: {temp_status}\n"
-    + f"• CPU usage: {cpu_usage_status}\n"
-    + f"• CPU load: {cpu_load_status}\n"
-    + f"• Throttling: {throttling_check()}\n"
-    + f"• Memory: {mem_status}"
+    + f"🌐 **Network**\n"
+    + f"• 🔒 VPN: {vpn_check()}\n"
+    + f"• 📺 MiniDLNA: {dlna_check()}\n"
+    + f"• 🌍 Connectivity: {network_check()}\n\n"
+    + f"🔥 **CPU & Memory**\n"
+    + f"• 🌡 Temperature: {temp_status}\n"
+    + f"• 🧮 CPU usage: {cpu_usage_status}\n"
+    + f"• 📈 CPU load: {cpu_load_status}\n"
+    + f"• ⚡ Throttling: {throttling_check()}\n"
+    + f"• 🧠 Memory: {mem_status}"
 )
 
 telegram(message)
