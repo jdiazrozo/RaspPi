@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import shutil
 import subprocess
 import psutil # type: ignore
-from tapo import Tapo # type: ignore
+from tapo.tapo import Tapo # type: ignore
 from dotenv import load_dotenv # type: ignore
 
 # ----------------------------
@@ -169,7 +169,7 @@ def get_tapo_camera_statuses():
         return statuses
     except Exception as e:
         return {"Error": f"Tapo API failed: {e}"}
-
+    
 # ----------------------------
 # BUILD STATUS MESSAGE
 # ----------------------------
