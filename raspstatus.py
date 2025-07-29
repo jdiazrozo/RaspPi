@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import telepot # type: ignore
-from datetime import datetime
+from datetime import datetime, timedelta
 import shutil
 import subprocess
 import psutil # type: ignore
@@ -45,9 +45,14 @@ def startup_check(threshold_minutes=5):
         return ""
 
 def shutdowns_last_24h():
-    """Count shutdown or reboot events in last 24 hours."""
-    cmd = "last -x | grep -E 'shutdown|reboot' | grep -c ''"
-    return run_command(cmd) or "0"
+    """Count shutdown or reboot events in the last 24 hours."""
+    try:
+        since = (datetime.now() - timedelta(hours=24)).strftime("%Y-%m-%d %H:%M:%S")
+        cmd = f"last -x --since '{since}' | grep -E 'shutdown|reboot' | wc -l"
+        result = run_command(cmd)
+        return result if result else "0"
+    except Exception:
+        return "ERROR"
 
 def hdd_check(path):
     return "OK" if shutil.os.path.ismount(path) else "NO-OK"
