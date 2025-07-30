@@ -155,9 +155,11 @@ def memory_usage():
     return f"{mem.percent:.1f}% used" + (" ⚠️ High" if warn else ""), warn
 
 def cpu_usage():
-    usage = psutil.cpu_percent(interval=0.5)
-    warn = usage > 85
-    return f"{usage:.1f}%" + (" ⚠️ High" if warn else ""), warn
+    psutil.cpu_percent(interval=None)
+    usage_list = psutil.cpu_percent(interval=1, percpu=True)
+    avg_usage = sum(usage_list) / len(usage_list)
+    warn = avg_usage > 85
+    return f"{avg_usage:.1f}% (per core: {usage_list})" + (" ⚠️ High" if warn else ""), warn
 
 def cpu_load():
     load1, load5, load15 = psutil.getloadavg()
