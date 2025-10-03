@@ -491,13 +491,14 @@ def handle(msg):
 
     elif msg['chat']['id'] == chat_id and command == '/rl_plot':
         try:
-            img_path = plot_rl_diagnostics(window=100, save_path="/tmp/rl_diagnostics.png")
+            import importlib
+            rl_monitor = importlib.import_module("rl_monitor")
+            img_path = rl_monitor.plot_rl_diagnostics(window=100, save_path="/tmp/rl_diagnostics.png")
             send("📈 RL diagnostics generated. Sending plot...")
             bot.sendPhoto(chat_id, open(img_path, "rb"))
         except Exception as e:
             send(f"⚠️ Error generating RL diagnostics plot: {e}")
 
-    
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
             '*General Raspi services commands available:*\n'
