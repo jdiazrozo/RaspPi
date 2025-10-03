@@ -22,6 +22,7 @@ RL_EPSILON_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_epsilon.pkl')
 sys.path.insert(0, RASPITRADER_PATH)
 
 import raspitrader as trader # type: ignore
+from rl_monitor import plot_rl_diagnostics # type: ignore
 from trade_config import EPSILON as DEFAULT_EPSILON # type: ignore
 import trade_utils # type: ignore
 from dotenv import load_dotenv # type: ignore
@@ -490,7 +491,6 @@ def handle(msg):
 
     elif msg['chat']['id'] == chat_id and command == '/rl_plot':
         try:
-            from rl_monitor import plot_rl_diagnostics
             img_path = plot_rl_diagnostics(window=100, save_path="/tmp/rl_diagnostics.png")
             send("📈 RL diagnostics generated. Sending plot...")
             bot.sendPhoto(chat_id, open(img_path, "rb"))
