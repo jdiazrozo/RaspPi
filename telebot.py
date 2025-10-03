@@ -22,7 +22,6 @@ RL_EPSILON_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_epsilon.pkl')
 sys.path.insert(0, RASPITRADER_PATH)
 
 import raspitrader as trader # type: ignore
-from rl_monitor import plot_rl_diagnostics # type: ignore
 from trade_config import EPSILON as DEFAULT_EPSILON # type: ignore
 import trade_utils # type: ignore
 from dotenv import load_dotenv # type: ignore
