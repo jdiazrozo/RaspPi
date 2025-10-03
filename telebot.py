@@ -487,6 +487,16 @@ def handle(msg):
         config.EPSILON = 0.1
         save_rl_epsilon(config.EPSILON)
         send(f"✅ EPSILON has been reset to {config.EPSILON:.3f}")
+
+    elif msg['chat']['id'] == chat_id and command == '/rl_plot':
+        try:
+            from rl_monitor import plot_rl_diagnostics
+            img_path = plot_rl_diagnostics(window=100, save_path="/tmp/rl_diagnostics.png")
+            send("📈 RL diagnostics generated. Sending plot...")
+            bot.sendPhoto(chat_id, open(img_path, "rb"))
+        except Exception as e:
+            send(f"⚠️ Error generating RL diagnostics plot: {e}")
+
     
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
@@ -514,7 +524,7 @@ def handle(msg):
             '/reset_epsilon → Reset EPSILON exploration.\n'
             '/crypto_markets → Configure markets.\n'
             '/trader_log → Send the raspitrader log file.\n'
-            '/rl_performance → Get RL performance.\n'
+            '/rl_plot → See RL performance.\n'
         )
         send(message)
 
