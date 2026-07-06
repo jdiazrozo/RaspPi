@@ -24,7 +24,6 @@ sys.path.insert(0, RASPITRADER_PATH)
 import raspitrader as trader # type: ignore
 from trade_config import EPSILON as DEFAULT_EPSILON # type: ignore
 import trade_utils # type: ignore
-import telegram_commands # type: ignore
 from dotenv import load_dotenv # type: ignore
 load_dotenv('/home/pi/keys/.env')
 
@@ -247,11 +246,6 @@ def handle(msg):
         send(f"*Current markets:*\n{formatted_markets}")
         send("*Do you want to change a market?* (yes/no)")
         chat_state[chat_id] = 'ask_if_change'
-
-    elif msg['chat']['id'] == chat_id and command in ('/buy', '/sell', '/setcash', '/setqty', '/holdings', '/trade_help'):
-        reply = telegram_commands.handle_command(msg['text'])
-        if reply:
-            send(reply)
 
     elif msg['chat']['id'] == chat_id and command == '/crypto_state':
         if os.path.exists(STATE_PATH):
@@ -523,11 +517,6 @@ def handle(msg):
             '/crypto → Get crypto wallet positions.\n'
             '/crypto_trade → Get crypto market analysis.\n'
             '/crypto_state → Get state.json.\n'
-            '/buy <MARKET> <QTY> <PRICE> → Record a Revolut buy.\n'
-            '/sell <MARKET> <QTY> <PRICE> → Record a Revolut sell.\n'
-            '/setcash <AMOUNT> → Correct stablecoin cash balance.\n'
-            '/setqty <ASSET> <QTY> → Correct an asset quantity.\n'
-            '/holdings → Show recorded holdings ledger.\n'
             '/list_state_keys → List of keys in json.\n'
             '/set_state → <symbol> <key> <value>.\n'
             '/restore_persistance → Restore backups.\n'
@@ -539,10 +528,9 @@ def handle(msg):
         )
         send(message)
 
-def send(text, parse_mode='MarkdownV2'):
-    if parse_mode == 'MarkdownV2':
-        text = escape_markdown(text)
-    bot.sendMessage(chat_id, text, parse_mode=parse_mode)
+def send(text):
+    escaped_text = escape_markdown(text)
+    bot.sendMessage(chat_id, escaped_text, parse_mode='MarkdownV2')
 
 #Telegram message
 bot = telepot.Bot(telegram_key)
