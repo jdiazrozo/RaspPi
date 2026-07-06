@@ -579,9 +579,10 @@ def handle(msg):
         )
         send(message)
 
-def send(text):
-    escaped_text = escape_markdown(text)
-    bot.sendMessage(chat_id, escaped_text, parse_mode='MarkdownV2')
+def send(text, parse_mode='MarkdownV2'):
+    if parse_mode == 'MarkdownV2':
+        text = escape_markdown(text)
+    bot.sendMessage(chat_id, text, parse_mode=parse_mode)
 
 #Telegram message
 bot = telepot.Bot(telegram_key)
