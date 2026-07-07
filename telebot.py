@@ -15,10 +15,11 @@ RASPITRADER_PATH = os.path.join(BASE_DIR, 'crypto_trader')
 CRYPTO_VALUES_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values')
 sys.path.insert(0, CRYPTO_VALUES_PATH)
 STATE_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/state.json')
-RL_Q_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_q_table.pkl')
+RL_Q_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_q_weights.pkl')
 RL_REWARD_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_reward_history.pkl')
 RL_VISITS_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_visits.pkl')
 RL_EPSILON_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_epsilon.pkl')
+RL_ACCURACY_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_prediction_accuracy.pkl')
 sys.path.insert(0, RASPITRADER_PATH)
 
 import raspitrader as trader # type: ignore
@@ -186,8 +187,8 @@ def format_qvalues(buy, sell, hold):
 
 #Delete all RL persistance files
 def reset_rl_files():
-    """Delete all RL persistence files (Q-table, rewards, visits, epsilon)."""
-    files_to_delete = [RL_Q_PATH, RL_REWARD_PATH, RL_VISITS_PATH, RL_EPSILON_PATH]
+    """Delete all RL persistence files (Q-weights, rewards, visits, epsilon, prediction accuracy)."""
+    files_to_delete = [RL_Q_PATH, RL_REWARD_PATH, RL_VISITS_PATH, RL_EPSILON_PATH, RL_ACCURACY_PATH]
     removed = []
     for file in files_to_delete:
         try:
