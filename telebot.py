@@ -299,7 +299,7 @@ def handle(msg):
         send("*Do you want to change a market?* (yes/no)")
         chat_state[chat_id] = 'ask_if_change'
 
-    elif msg['chat']['id'] == chat_id and command in ('/buy', '/sell', '/setcash', '/setqty', '/holdings', '/trade_help'):
+    elif msg['chat']['id'] == chat_id and command in ('/buy', '/sell', '/buycost', '/sellcost', '/setcash', '/setqty', '/holdings', '/trade_help'):
         reply = telegram_commands.handle_command(msg['text'])
         if reply:
             send(reply)
@@ -578,8 +578,10 @@ def handle(msg):
             '/crypto → Get crypto wallet positions.\n'
             '/crypto_trade → Get crypto market analysis.\n'
             '/crypto_state → Get state.json.\n'
-            '/buy <MARKET> <QTY> <PRICE> → Record a Revolut buy.\n'
+            '/buy <MARKET> <QTY> <PRICE> → Record a Revolut buy (PRICE is per-unit).\n'
             '/sell <MARKET> <QTY> <PRICE> → Record a Revolut sell.\n'
+            '/buycost <MARKET> <QTY> <TOTAL_COST> → Record a buy from total EUR spent.\n'
+            '/sellcost <MARKET> <QTY> <TOTAL_PROCEEDS> → Record a sell from total EUR received.\n'
             '/setcash <AMOUNT> → Correct stablecoin cash balance.\n'
             '/setqty <ASSET> <QTY> → Correct an asset quantity.\n'
             '/holdings → Show recorded holdings ledger.\n'
