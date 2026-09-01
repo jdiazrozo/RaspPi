@@ -23,7 +23,6 @@ RL_ACCURACY_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_prediction_a
 sys.path.insert(0, RASPITRADER_PATH)
 
 import raspitrader as trader # type: ignore
-from trade_config import EPSILON as DEFAULT_EPSILON # type: ignore
 import trade_utils # type: ignore
 import telegram_commands # type: ignore
 from dotenv import load_dotenv # type: ignore
@@ -538,12 +537,12 @@ def handle(msg):
             send("ℹ️ No RL persistence files found to delete.")
 
     elif msg['chat']['id'] == chat_id and command == '/reset_epsilon':
-        import trade_config as config # type: ignore
-        from trade_utils import save_rl_epsilon # type: ignore
-        
-        config.EPSILON = 0.1
-        save_rl_epsilon(config.EPSILON)
-        send(f"✅ EPSILON has been reset to {config.EPSILON:.3f}")
+        # RL (Q-learning/EPSILON exploration) was retired from raspitrader -
+        # trade_config.EPSILON and trade_utils.save_rl_epsilon no longer
+        # exist. Kept as a stub (not deleted) so this command fails with a
+        # clear reply instead of an unhandled exception, same reasoning as
+        # /rl_performance's own try/except a few commands up.
+        send("ℹ️ RL/EPSILON exploration was retired - there's nothing to reset anymore.")
 
     elif msg['chat']['id'] == chat_id and command == '/rl_plot':
         try:
