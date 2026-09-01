@@ -299,7 +299,7 @@ def handle(msg):
         send("*Do you want to change a market?* (yes/no)")
         chat_state[chat_id] = 'ask_if_change'
 
-    elif msg['chat']['id'] == chat_id and command in ('/buy', '/sell', '/buycost', '/sellcost', '/setcash', '/setqty', '/setfomcdates', '/holdings', '/trade_help'):
+    elif msg['chat']['id'] == chat_id and command in ('/buy', '/sell', '/buycost', '/sellcost', '/setcash', '/setqty', '/setfomcdates', '/setdriftrecovery', '/holdings', '/trade_help'):
         reply = telegram_commands.handle_command(msg['text'])
         if reply:
             send(reply)
@@ -585,6 +585,7 @@ def handle(msg):
             '/setcash <AMOUNT> → Correct stablecoin cash balance.\n'
             '/setqty <ASSET> <QTY> → Correct an asset quantity.\n'
             '/setfomcdates <DATES> → Update FOMC calendar (comma-separated YYYY-MM-DD).\n'
+            '/setdriftrecovery <on|off> → Toggle automated concept-drift recovery.\n'
             '/holdings → Show recorded holdings ledger.\n'
             '/list_state_keys → List of keys in json.\n'
             '/set_state → <symbol> <key> <value>.\n'
