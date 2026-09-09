@@ -14,6 +14,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RASPITRADER_PATH = os.path.join(BASE_DIR, 'crypto_trader')
 CRYPTO_VALUES_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values')
 sys.path.insert(0, CRYPTO_VALUES_PATH)
+sys.path.insert(0, os.path.join(CRYPTO_VALUES_PATH, 'tools'))  # for /rl_plot's render_ml_performance_png
 STATE_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/state.json')
 RL_Q_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_q_weights.pkl')
 RL_REWARD_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_reward_history.pkl')
@@ -545,14 +546,16 @@ def handle(msg):
         send("ℹ️ RL/EPSILON exploration was retired - there's nothing to reset anymore.")
 
     elif msg['chat']['id'] == chat_id and command == '/rl_plot':
+        # Repurposed 2026-09-09: rl_monitor.py (pure Q-function diagnostics)
+        # was deleted in the RL retirement, so this had been dead since.
         try:
             import importlib
-            rl_monitor = importlib.import_module("rl_monitor")
-            img_path = rl_monitor.plot_rl_diagnostics(window=100, save_path="/tmp/rl_diagnostics.png")
-            send("📈 RL diagnostics generated. Sending plot...")
+            render_ml_performance_png = importlib.import_module("render_ml_performance_png")
+            img_path = render_ml_performance_png.render_ml_performance_png()
+            send("📊 ML performance table generated. Sending image...")
             bot.sendPhoto(chat_id, open(img_path, "rb"))
         except Exception as e:
-            send(f"⚠️ Error generating RL diagnostics plot: {e}")
+            send(f"⚠️ Error generating ML performance image: {e}")
 
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
@@ -594,7 +597,7 @@ def handle(msg):
             '/crypto_markets → Configure markets.\n'
             '/trader_log → Send the raspitrader log file.\n'
             '/rl_performance → Get RL performance.\n'
-            '/rl_plot → See RL diagnostics plot.\n'
+            '/rl_plot → Get [ML PERFORMANCE] table as an image.\n'
         )
         send(message)
 
