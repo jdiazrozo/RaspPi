@@ -1,5 +1,4 @@
 import telepot # type: ignore
-from telepot.loop import MessageLoop # type: ignore
 import importlib.util
 import re
 import os
@@ -7,8 +6,6 @@ import time
 import pandas as pd # type: ignore
 import json
 import shutil
-import re
-from io import StringIO
 import sys
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RASPITRADER_PATH = os.path.join(BASE_DIR, 'crypto_trader')
@@ -16,15 +13,9 @@ CRYPTO_VALUES_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values')
 sys.path.insert(0, CRYPTO_VALUES_PATH)
 sys.path.insert(0, os.path.join(CRYPTO_VALUES_PATH, 'tools'))  # for /rl_plot's render_ml_performance_png
 STATE_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/state.json')
-RL_Q_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_q_weights.pkl')
-RL_REWARD_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_reward_history.pkl')
-RL_VISITS_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_visits.pkl')
-RL_EPSILON_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_epsilon.pkl')
-RL_ACCURACY_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/rl_prediction_accuracy.pkl')
 sys.path.insert(0, RASPITRADER_PATH)
 
 import raspitrader as trader # type: ignore
-import trade_utils # type: ignore
 import telegram_commands # type: ignore
 from dotenv import load_dotenv # type: ignore
 load_dotenv('/home/pi/keys/.env')
@@ -52,18 +43,6 @@ def restore_persistance():
         if os.path.exists(STATE_PATH + '.bak'):
             shutil.copy(STATE_PATH + '.bak', STATE_PATH)
             send("✅ state.json has been restored from backup.")
-        if os.path.exists(RL_Q_PATH + '.bak'):
-            shutil.copy(RL_Q_PATH + '.bak', RL_Q_PATH)
-            send("✅ RL Q-table restored from backup.")
-        if os.path.exists(RL_REWARD_PATH + '.bak'):
-            shutil.copy(RL_REWARD_PATH + '.bak', RL_REWARD_PATH)
-            send("✅ RL reward history restored from backup.")
-        if os.path.exists(RL_VISITS_PATH + '.bak'):
-            shutil.copy(RL_VISITS_PATH + '.bak', RL_VISITS_PATH)
-            send("✅ RL reward history restored from backup.")
-        if os.path.exists(RL_EPSILON_PATH + '.bak'):
-            shutil.copy(RL_EPSILON_PATH + '.bak', RL_EPSILON_PATH)
-            send("✅ RL reward history restored from backup.")
     except Exception as e:
         send(f"⚠️ Error restoring backup: {e}")
 
@@ -176,28 +155,6 @@ def vpn_info(vpn_user):
     else:
         user_info = user_db.loc[user_db['Name'] == vpn_user].values.flatten().tolist()
     return(user_info)
-
-# Format Q-values
-def format_qvalues(buy, sell, hold):
-    """Format B, S, H with colored dot emojis."""
-    buy_colored = buy.replace("B:", "🟢")
-    sell_colored = sell.replace("S:", "🔴")
-    hold_colored = hold.replace("H:", "🟡")
-    return f"{buy_colored} |{sell_colored} |{hold_colored}"
-
-#Delete all RL persistance files
-def reset_rl_files():
-    """Delete all RL persistence files (Q-weights, rewards, visits, epsilon, prediction accuracy)."""
-    files_to_delete = [RL_Q_PATH, RL_REWARD_PATH, RL_VISITS_PATH, RL_EPSILON_PATH, RL_ACCURACY_PATH]
-    removed = []
-    for file in files_to_delete:
-        try:
-            if os.path.exists(file):
-                os.remove(file)
-                removed.append(os.path.basename(file))
-        except Exception as e:
-            print(f"[WARN] Failed to remove {file}: {e}")
-    return removed
 
 #Telegram message parser
 def handle(msg):
@@ -471,78 +428,26 @@ def handle(msg):
 
     elif msg['chat']['id'] == chat_id and command == '/restore_persistance':
         restore_persistance()
-        send("✅ Backups (State, Q-table and reward history) restored.")
 
     elif msg['chat']['id'] == chat_id and command == '/rl_performance':
-        try:
-            # Load Q-table and rewards
-            from trade_rl import load_q_table, _reward_history # type: ignore
-            from trade_utils import load_rl_epsilon # type: ignore
-
-            load_q_table()  # Load Q-values
-            # Explicitly reload reward history
-            _reward_history.clear()
-            _reward_history.update(trade_utils.load_rl_rewards())
-
-            # Load state.json
-            state = load_state_json(STATE_PATH)
-
-            # Capture the printed output of global_performance
-            buffer = StringIO()
-            backup_stdout = sys.stdout
-            sys.stdout = buffer
-            trade_utils.global_performance(state)
-            sys.stdout = backup_stdout
-
-
-            lines = buffer.getvalue().splitlines()
-
-            # Format markets for Telegram
-            formatted_message = []
-            for line in lines[2:]:  # Skip [SUMMARY] and ------
-                if not line.strip():
-                    continue
-
-                if "No RL data" in line:
-                    market_info = line.split("|")[0].strip()  # e.g., "DOTUSDC    → +3.24%"
-                    formatted_message.append(f"*{market_info}*:\n- No RL data")
-                    continue
-
-                # Split Q-values and rewards
-                parts = line.split("|")
-                if len(parts) >= 4:
-                    market_info = parts[0].strip()
-                    b_section = parts[1].strip()
-                    s_section = parts[2].strip()
-                    h_section = parts[3].strip()
-                    reward = " | ".join(parts[4:]).strip() if len(parts) > 4 else ""
-                    reward_colored = reward.replace("R", "🏆")
-
-                    formatted_message.append(
-                        f"*{market_info}*\n- 🟢{b_section}\n- 🔴{s_section}\n- 🟡{h_section}\n- {reward_colored}"
-                    )
-                else:
-                    formatted_message.append(line)
-
-            current_epsilon = load_rl_epsilon(DEFAULT_EPSILON)
-            message_to_send = f"*#Reinforcement Learning Performance:*\n*(EPSILON={current_epsilon:.3f})*\n" + "\n".join(formatted_message)
-            send(message_to_send)
-        except Exception as e:
-            send(f"⚠️ Error generating RL performance: {e}")
+        # RL (Q-learning) was retired from raspitrader - trade_rl.py no
+        # longer exists (renamed to stage_a_diagnostics.py, all Q-function
+        # code removed). Kept as a stub pointing at /rl_plot's replacement,
+        # same reasoning as /reset_epsilon just below.
+        send("ℹ️ RL performance tracking was retired along with RL itself - use /rl_plot for the current [ML PERFORMANCE] view.")
 
     elif msg['chat']['id'] == chat_id and command == '/reset_rl':
-        removed_files = reset_rl_files()
-        if removed_files:
-            send(f"✅ RL data reset. Deleted: {', '.join(removed_files)}")
-        else:
-            send("ℹ️ No RL persistence files found to delete.")
+        # RL persistence files (Q-weights, rewards, visits, epsilon,
+        # accuracy) haven't existed since the same retirement - nothing
+        # left to delete.
+        send("ℹ️ RL persistence files were retired along with RL itself - there's nothing to reset anymore.")
 
     elif msg['chat']['id'] == chat_id and command == '/reset_epsilon':
         # RL (Q-learning/EPSILON exploration) was retired from raspitrader -
         # trade_config.EPSILON and trade_utils.save_rl_epsilon no longer
         # exist. Kept as a stub (not deleted) so this command fails with a
         # clear reply instead of an unhandled exception, same reasoning as
-        # /rl_performance's own try/except a few commands up.
+        # /rl_performance's own stub just above.
         send("ℹ️ RL/EPSILON exploration was retired - there's nothing to reset anymore.")
 
     elif msg['chat']['id'] == chat_id and command == '/rl_plot':
@@ -592,11 +497,11 @@ def handle(msg):
             '/list_state_keys → List of keys in json.\n'
             '/set_state → <symbol> <key> <value>.\n'
             '/restore_persistance → Restore backups.\n'
-            '/reset_rl → Reset persistance RL files.\n'
-            '/reset_epsilon → Reset EPSILON exploration.\n'
+            '/reset_rl → (retired, RL was removed from raspitrader).\n'
+            '/reset_epsilon → (retired, RL was removed from raspitrader).\n'
             '/crypto_markets → Configure markets.\n'
             '/trader_log → Send the raspitrader log file.\n'
-            '/rl_performance → Get RL performance.\n'
+            '/rl_performance → (retired, see /rl_plot).\n'
             '/rl_plot → Get [ML PERFORMANCE] table as an image.\n'
         )
         send(message)
