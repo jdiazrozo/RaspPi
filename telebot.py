@@ -11,7 +11,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RASPITRADER_PATH = os.path.join(BASE_DIR, 'crypto_trader')
 CRYPTO_VALUES_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values')
 sys.path.insert(0, CRYPTO_VALUES_PATH)
-sys.path.insert(0, os.path.join(CRYPTO_VALUES_PATH, 'tools'))  # for /rl_plot's render_ml_performance_png
+sys.path.insert(0, os.path.join(CRYPTO_VALUES_PATH, 'tools'))  # for /ml_plot's render_ml_performance_png
 STATE_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/state.json')
 sys.path.insert(0, RASPITRADER_PATH)
 
@@ -432,9 +432,9 @@ def handle(msg):
     elif msg['chat']['id'] == chat_id and command == '/rl_performance':
         # RL (Q-learning) was retired from raspitrader - trade_rl.py no
         # longer exists (renamed to stage_a_diagnostics.py, all Q-function
-        # code removed). Kept as a stub pointing at /rl_plot's replacement,
+        # code removed). Kept as a stub pointing at /ml_plot's replacement,
         # same reasoning as /reset_epsilon just below.
-        send("ℹ️ RL performance tracking was retired along with RL itself - use /rl_plot for the current [ML PERFORMANCE] view.")
+        send("ℹ️ RL performance tracking was retired along with RL itself - use /ml_plot for the current [ML PERFORMANCE] view.")
 
     elif msg['chat']['id'] == chat_id and command == '/reset_rl':
         # RL persistence files (Q-weights, rewards, visits, epsilon,
@@ -450,9 +450,10 @@ def handle(msg):
         # /rl_performance's own stub just above.
         send("ℹ️ RL/EPSILON exploration was retired - there's nothing to reset anymore.")
 
-    elif msg['chat']['id'] == chat_id and command == '/rl_plot':
-        # Repurposed 2026-09-09: rl_monitor.py (pure Q-function diagnostics)
-        # was deleted in the RL retirement, so this had been dead since.
+    elif msg['chat']['id'] == chat_id and command == '/ml_plot':
+        # Renamed from /rl_plot 2026-09-09: repurposed from the dead
+        # rl_monitor.py (deleted in the RL retirement) to render the
+        # [ML PERFORMANCE] table instead, so the RL-era name no longer fit.
         try:
             import importlib
             render_ml_performance_png = importlib.import_module("render_ml_performance_png")
@@ -501,8 +502,8 @@ def handle(msg):
             '/reset_epsilon → (retired, RL was removed from raspitrader).\n'
             '/crypto_markets → Configure markets.\n'
             '/trader_log → Send the raspitrader log file.\n'
-            '/rl_performance → (retired, see /rl_plot).\n'
-            '/rl_plot → Get [ML PERFORMANCE] table as an image.\n'
+            '/rl_performance → (retired, see /ml_plot).\n'
+            '/ml_plot → Get [ML PERFORMANCE] table as an image.\n'
         )
         send(message)
 
