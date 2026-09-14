@@ -11,7 +11,6 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RASPITRADER_PATH = os.path.join(BASE_DIR, 'crypto_trader')
 CRYPTO_VALUES_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values')
 sys.path.insert(0, CRYPTO_VALUES_PATH)
-sys.path.insert(0, os.path.join(CRYPTO_VALUES_PATH, 'tools'))  # for /ml_plot's render_ml_performance_png
 STATE_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/state.json')
 sys.path.insert(0, RASPITRADER_PATH)
 
@@ -451,17 +450,22 @@ def handle(msg):
         send("ℹ️ RL/EPSILON exploration was retired - there's nothing to reset anymore.")
 
     elif msg['chat']['id'] == chat_id and command == '/ml_plot':
-        # Renamed from /rl_plot 2026-09-09: repurposed from the dead
-        # rl_monitor.py (deleted in the RL retirement) to render the
-        # [ML PERFORMANCE] table instead, so the RL-era name no longer fit.
-        try:
-            import importlib
-            render_ml_performance_png = importlib.import_module("render_ml_performance_png")
-            img_path = render_ml_performance_png.render_ml_performance_png()
-            send("📊 ML performance table generated. Sending image...")
+        # Was: import + call render_ml_performance_png() right here - but
+        # telebot.py is a long-running service that imports raspitrader.py
+        # (and everything under crypto_values) once at startup, so that
+        # in-memory state only ever reflected whatever it was when THIS
+        # service last (re)started, not each cron cycle's real, current
+        # state - only a telebot restart ever showed a fresh table. Fixed
+        # 2026-09-14: raspitrader.py itself (a fresh process every cycle,
+        # so never stale) now renders this PNG at the end of every cycle -
+        # same "something else keeps the file fresh, this just serves it"
+        # pattern /trader_log already uses for its log file.
+        img_path = '/tmp/ml_performance.png'
+        if os.path.exists(img_path):
+            send("📊 Sending latest ML performance table...")
             bot.sendPhoto(chat_id, open(img_path, "rb"))
-        except Exception as e:
-            send(f"⚠️ Error generating ML performance image: {e}")
+        else:
+            send("⚠️ No ML performance image yet - it's written by raspitrader.py at the end of each cycle, so one hasn't run since this file last existed.")
 
     elif msg['chat']['id'] == chat_id and command == '/help':
         message = (
