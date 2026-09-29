@@ -255,7 +255,7 @@ def handle(msg):
         send("*Do you want to change a market?* (yes/no)")
         chat_state[chat_id] = 'ask_if_change'
 
-    elif msg['chat']['id'] == chat_id and command in ('/buy', '/sell', '/buycost', '/sellcost', '/setcash', '/setqty', '/setfomcdates', '/setdriftrecovery', '/holdings', '/trade_help'):
+    elif msg['chat']['id'] == chat_id and command in ('/buy', '/sell', '/deposit', '/withdraw', '/setcash', '/setqty', '/setfomcdates', '/setdriftrecovery', '/holdings', '/trade_help'):
         reply = telegram_commands.handle_command(msg['text'])
         if reply:
             send(reply)
@@ -428,27 +428,6 @@ def handle(msg):
     elif msg['chat']['id'] == chat_id and command == '/restore_persistance':
         restore_persistance()
 
-    elif msg['chat']['id'] == chat_id and command == '/rl_performance':
-        # RL (Q-learning) was retired from raspitrader - trade_rl.py no
-        # longer exists (renamed to stage_a_diagnostics.py, all Q-function
-        # code removed). Kept as a stub pointing at /ml_plot's replacement,
-        # same reasoning as /reset_epsilon just below.
-        send("ℹ️ RL performance tracking was retired along with RL itself - use /ml_plot for the current [ML PERFORMANCE] view.")
-
-    elif msg['chat']['id'] == chat_id and command == '/reset_rl':
-        # RL persistence files (Q-weights, rewards, visits, epsilon,
-        # accuracy) haven't existed since the same retirement - nothing
-        # left to delete.
-        send("ℹ️ RL persistence files were retired along with RL itself - there's nothing to reset anymore.")
-
-    elif msg['chat']['id'] == chat_id and command == '/reset_epsilon':
-        # RL (Q-learning/EPSILON exploration) was retired from raspitrader -
-        # trade_config.EPSILON and trade_utils.save_rl_epsilon no longer
-        # exist. Kept as a stub (not deleted) so this command fails with a
-        # clear reply instead of an unhandled exception, same reasoning as
-        # /rl_performance's own stub just above.
-        send("ℹ️ RL/EPSILON exploration was retired - there's nothing to reset anymore.")
-
     elif msg['chat']['id'] == chat_id and command == '/ml_plot':
         # Was: import + call render_ml_performance_png() right here - but
         # telebot.py is a long-running service that imports raspitrader.py
@@ -492,8 +471,8 @@ def handle(msg):
             '/crypto_state → Get state.json.\n'
             '/buy <MARKET> <QTY> <PRICE> → Record a Revolut buy (PRICE is per-unit).\n'
             '/sell <MARKET> <QTY> <PRICE> → Record a Revolut sell.\n'
-            '/buycost <MARKET> <QTY> <TOTAL_COST> → Record a buy from total EUR spent.\n'
-            '/sellcost <MARKET> <QTY> <TOTAL_PROCEEDS> → Record a sell from total EUR received.\n'
+            '/deposit <ASSET> <QTY> → Add funds brought in from outside (EUR or crypto).\n'
+            '/withdraw <ASSET> <QTY> → Remove funds taken out (EUR or crypto).\n'
             '/setcash <AMOUNT> → Correct stablecoin cash balance.\n'
             '/setqty <ASSET> <QTY> → Correct an asset quantity.\n'
             '/setfomcdates <DATES> → Update FOMC calendar (comma-separated YYYY-MM-DD).\n'
@@ -502,11 +481,8 @@ def handle(msg):
             '/list_state_keys → List of keys in json.\n'
             '/set_state → <symbol> <key> <value>.\n'
             '/restore_persistance → Restore backups.\n'
-            '/reset_rl → (retired, RL was removed from raspitrader).\n'
-            '/reset_epsilon → (retired, RL was removed from raspitrader).\n'
             '/crypto_markets → Configure markets.\n'
             '/trader_log → Send the raspitrader log file.\n'
-            '/rl_performance → (retired, see /ml_plot).\n'
             '/ml_plot → Get [ML PERFORMANCE] table as an image.\n'
         )
         send(message)
