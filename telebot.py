@@ -15,11 +15,11 @@ STATE_PATH = os.path.join(RASPITRADER_PATH, 'crypto_values/state.json')
 sys.path.insert(0, RASPITRADER_PATH)
 
 import raspitrader as trader # type: ignore
-import telegram_commands # type: ignore
+import comms_telegram # type: ignore
 from dotenv import load_dotenv # type: ignore
 load_dotenv('/home/pi/keys/.env')
 
-config_file_path = os.path.join(RASPITRADER_PATH, 'crypto_values/trade_config.py')
+config_file_path = os.path.join(RASPITRADER_PATH, 'crypto_values/core_config.py')
 
 
 chat_state = {}
@@ -67,14 +67,14 @@ def escape_markdown(text):
     escape_chars = r'_[]()~>#+-=|{}.!'
     return re.sub(r'([%s])' % re.escape(escape_chars), r'\\\1', text)
 
-# Function to load the trade_config module
-def load_trade_config():
-    spec = importlib.util.spec_from_file_location("trade_config", config_file_path)
-    trade_config = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(trade_config)
-    return trade_config
+# Function to load the core_config module
+def load_core_config():
+    spec = importlib.util.spec_from_file_location("core_config", config_file_path)
+    core_config = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(core_config)
+    return core_config
 
-# Function to update markets list in trade_config.py
+# Function to update markets list in core_config.py
 def update_markets(new_markets):
     with open(config_file_path, 'r') as file:
         content = file.read()
@@ -248,15 +248,15 @@ def handle(msg):
         restore_persistance()
 
     elif msg['chat']['id'] == chat_id and command == '/crypto_markets':
-        trade_config = load_trade_config()
-        markets = trade_config.markets
+        core_config = load_core_config()
+        markets = core_config.markets
         formatted_markets = "\n".join(f"{idx + 1}. {market}" for idx, market in enumerate(markets))
         send(f"*Current markets:*\n{formatted_markets}")
         send("*Do you want to change a market?* (yes/no)")
         chat_state[chat_id] = 'ask_if_change'
 
     elif msg['chat']['id'] == chat_id and command in ('/buy', '/sell', '/deposit', '/withdraw', '/setcash', '/setqty', '/setfomcdates', '/holdings', '/trade_help'):
-        reply = telegram_commands.handle_command(msg['text'])
+        reply = comms_telegram.handle_command(msg['text'])
         if reply:
             send(reply)
 
@@ -281,8 +281,8 @@ def handle(msg):
         
         elif chat_state[chat_id] == 'process_market_change':
             try:
-                trade_config = load_trade_config()
-                markets = trade_config.markets
+                core_config = load_core_config()
+                markets = core_config.markets
 
                 user_input = text.split()
                 index = int(user_input[0]) - 1
@@ -292,7 +292,7 @@ def handle(msg):
                     old_market = markets[index]
                     markets[index] = new_market
 
-                    # Save the updated markets list back to trade_config.py
+                    # Save the updated markets list back to core_config.py
                     update_markets(markets)
 
                     updated_markets = "\n".join(f"{idx + 1}. {market}" for idx, market in enumerate(markets))
