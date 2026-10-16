@@ -133,8 +133,8 @@ class IntegrityTest(unittest.TestCase):
             passwd = os.path.join(d, 'passwd')
             with open(passwd, 'w') as f:
                 f.write('root:x:0:0::/root:/bin/bash\npi:x:1000:1000::/home/pi:/bin/bash\n')
-            saved = config.WATCH_FILES, config.ALARM_IF_EXISTS
-            config.WATCH_FILES, config.ALARM_IF_EXISTS = [passwd, os.path.join(d, '*.conf')], []
+            saved = config.WATCH_FILES, config.PRELOAD_FILE
+            config.WATCH_FILES, config.PRELOAD_FILE = [passwd, os.path.join(d, '*.conf')], os.path.join(d, 'preload')
             state = {}
             integ = Integrity(state, passwd=passwd)
             self.assertEqual(integ.scan(), [])
@@ -149,8 +149,14 @@ class IntegrityTest(unittest.TestCase):
             os.remove(os.path.join(d, 'x.conf'))
             self.assertIn('deleted', integ.scan()[0][1])
             self.assertEqual(integ.scan(), [])
+            with open(config.PRELOAD_FILE, 'w') as f:
+                f.write('/usr/lib/arm-linux-gnueabihf/libarmmem-${PLATFORM}.so\n')
+            self.assertEqual(integ.scan(), [])
+            with open(config.PRELOAD_FILE, 'a') as f:
+                f.write('/lib/libhide.so\n')
+            self.assertEqual([(k, '/lib/libhide.so' in t) for k, t in integ.scan()], [('preload', True)])
         finally:
-            config.WATCH_FILES, config.ALARM_IF_EXISTS = saved
+            config.WATCH_FILES, config.PRELOAD_FILE = saved
             shutil.rmtree(d)
 
 

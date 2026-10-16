@@ -36,7 +36,9 @@ WATCH_FILES = [
     '/etc/hosts', '/etc/ld.so.preload', '/home/pi/keys/.env',
     '/opt/sentinel/sentinel/*.py',
 ]
-ALARM_IF_EXISTS = ['/etc/ld.so.preload']
+# Raspberry Pi OS preloads libarmmem (fast memcpy) here; any other library is a rootkit hook.
+PRELOAD_FILE = '/etc/ld.so.preload'
+PRELOAD_ALLOW = ['/usr/lib/arm-linux-gnueabihf/libarmmem-${PLATFORM}.so']
 
 SUSPICIOUS_DIRS = ['/tmp/', '/var/tmp/', '/dev/shm/', '/run/shm/', '/run/user/']
 SYSTEM_DIRS = ['/usr/', '/bin/', '/sbin/', '/lib/', '/opt/']

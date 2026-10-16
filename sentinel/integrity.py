@@ -30,6 +30,19 @@ def _sha256(path):
     return h.hexdigest()
 
 
+def _preload():
+    try:
+        with open(config.PRELOAD_FILE) as f:
+            lines = [l.strip() for l in f]
+    except OSError:
+        return []
+    extra = [l for l in lines if l and not l.startswith('#') and l not in config.PRELOAD_ALLOW]
+    if not extra:
+        return []
+    return [('preload', '🚨 %s injects %s into every program - the classic userland rootkit hook'
+             % (config.PRELOAD_FILE, ', '.join(extra)[:200]))]
+
+
 def passwd_users(text):
     users = {}
     for line in text.splitlines():
@@ -76,10 +89,7 @@ class Integrity:
             if path == self.passwd:
                 findings += self._accounts()
         self.state['files_ready'] = True
-        for path in config.ALARM_IF_EXISTS:
-            if os.path.exists(path):
-                findings.append(('exists:' + path, '🚨 %s exists - the classic userland rootkit hook' % path))
-        return findings
+        return findings + _preload()
 
     def _accounts(self):
         try:
