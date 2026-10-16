@@ -49,6 +49,14 @@ CPU_ALERT_MINUTES = 15
 CPU_ALLOW = ['raspitrader.py', 'apt', 'dpkg', 'unattended-upgr', 'minidlnad', 'rsync', 'tar', 'gzip', 'git']
 SUSPICIOUS_PORTS = [3333, 4444, 5555, 6666, 7777, 14433, 14444, 45560, 45700]
 
+LAN_INTERFACE = 'eth0'
+GATEWAY_IP = '192.168.1.1'
+LAN_SWEEP_SECONDS = 3600
+# Nothing at home uses these (telnet, RDP, VNC), so any connection to them is a probe. Never port-forward them.
+LAN_DECOY_PORTS = [23, 2323, 3389, 5900]
+ARP_SCAN_TARGETS = 30
+LAN_SCAN_ALLOW = []  # MACs allowed to sweep the network (e.g. a NAS or Home Assistant)
+
 
 def apply_overrides(path=None):
     """Load the JSON override file; returns the keys it did not recognise."""

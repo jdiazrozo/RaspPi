@@ -44,7 +44,7 @@ def read_sockets(netdir='/proc/net'):
 def listeners(socks):
     found = {}
     for proto, lip, lport, rip, rport, st, inode in socks:
-        if proto == 'tcp' and st != TCP_LISTEN:
+        if proto == 'tcp' and (st != TCP_LISTEN or lport in config.LAN_DECOY_PORTS):
             continue
         # Unbound UDP on ephemeral ports is just clients (DHCP, DNS); not worth an alert.
         if proto == 'udp' and (st != UDP_UNCONNECTED or rport != 0 or lport >= EPHEMERAL_START):

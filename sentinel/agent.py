@@ -9,6 +9,7 @@ from . import alerts, config, firewall, state as store
 from .authlog import LogTail, parse_line
 from .guard import Guard, is_trusted
 from .integrity import Integrity
+from .lan import LanWatch
 from .netwatch import NetWatch
 from .procwatch import ProcWatch
 
@@ -23,8 +24,9 @@ def human(seconds):
     return '%dm' % max(1, seconds // 60)
 
 
-def unban_file():
-    return os.path.join(config.STATE_DIR, 'unban')
+def request_file(name):
+    """CLI -> running agent: requests are files in STATE_DIR, picked up within a minute."""
+    return os.path.join(config.STATE_DIR, name)
 
 
 class Agent:
@@ -40,6 +42,7 @@ class Agent:
         self.integrity = Integrity(self.state)
         self.net = NetWatch(self.state)
         self.procs = ProcWatch(self.state)
+        self.lan = LanWatch(self.state, time.time())
         self.login_ips = self.state.setdefault('login_ips', {})
         log = self.state.get('authlog', {})
         self.tail = LogTail(config.AUTH_LOG, log.get('inode'), log.get('offset'))
@@ -68,6 +71,11 @@ class Agent:
         else:
             mode = 'full detection'
         self.notify.alert('🛡 Sentinel started: %s. %d IPs banned.' % (mode, len(self.guard.bans)))
+        if self.lan.learning(now):
+            until = datetime.fromtimestamp(self.lan.first_start + config.LEARNING_HOURS * 3600)
+            self.notify.alert('🏠 Home network: learning your devices until %s' % until.strftime('%d/%m %H:%M'))
+        for problem in self.lan.open():
+            self.notify.alert('⚙️ ' + problem)
         if not os.path.exists(config.AUTH_LOG):
             self.notify.alert('⚙️ %s not found - SSH brute-force detection is blind' % config.AUTH_LOG)
         if self.unknown_keys:
@@ -80,6 +88,7 @@ class Agent:
         while self.running:
             now = time.time()
             self._guarded('auth log', self._auth, now)
+            self._guarded('home network', self._lan, now)
             if now >= next_scan:
                 self.scan(now)
                 next_scan = now + config.SCAN_SECONDS
@@ -99,6 +108,10 @@ class Agent:
             event = parse_line(line)
             if event:
                 self.handle(event, now)
+
+    def _lan(self, now):
+        for key, text in self.lan.poll(now):
+            self.notify.alert(text, key=key, now=now)
 
     def handle(self, event, now):
         kind = event[0]
@@ -148,6 +161,7 @@ class Agent:
             for key, text in findings:
                 self.notify.alert(text, key=key, now=now)
         self._guarded('ban expiry', self._expire, now)
+        self._guarded('network sweep', self.lan.sweep, now)
         self._guarded('heartbeat', self._heartbeat, now)
         self._guarded('daily summary', self._summary, now)
         self.save()
@@ -156,7 +170,11 @@ class Agent:
         for ip in self.guard.expired(now):
             firewall.unban(ip)
         self.guard.prune(now)
-        path = unban_file()
+        if os.path.exists(request_file('accept-gateway')):
+            os.remove(request_file('accept-gateway'))
+            self.state.pop('gateway_mac', None)
+            self.notify.alert('✅ Router MAC forgotten; the next one seen is trusted', now=now)
+        path = request_file('unban')
         if not os.path.exists(path):
             return
         with open(path) as f:
