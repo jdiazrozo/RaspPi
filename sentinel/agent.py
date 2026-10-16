@@ -109,10 +109,13 @@ class Agent:
             if ban:
                 self.stats()['bans'] += 1
                 ok = firewall.ban(ip)
+                if ok and not config.BAN_ALERTS:
+                    return
                 users = ', '.join(u[:20] for u in ban['users'][:5]) or '-'
                 self.notify.alert('%s %s for %s: %d failed SSH attempts (users: %s), offence #%d'
                                   % ('🛡 Banned' if ok else '⚙️ FAILED to ban', ip, human(ban['duration']),
-                                     ban['strikes'], users, ban['offence']), now=now)
+                                     ban['strikes'], users, ban['offence']),
+                                  key=None if ok else 'banfail', now=now)
         elif kind == 'accept':
             _, ip, user, method = event
             failed = self.guard.pending(ip)

@@ -19,6 +19,8 @@ STRIKE_LIMIT = 5
 STRIKE_WINDOW = 600
 BAN_LADDER = [3600, 86400, 7 * 86400]
 OFFENDER_MEMORY = 30 * 86400
+# Internet-facing SSH gets banned IPs all day: count them in the daily report instead of one message each.
+BAN_ALERTS = False
 # Never banned, and logins from here only alert the first time. Covers LAN and the WireGuard subnet.
 TRUSTED_NETS = ['127.0.0.0/8', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16',
                 '::1/128', 'fe80::/10', 'fc00::/7']
