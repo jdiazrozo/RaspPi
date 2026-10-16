@@ -1,11 +1,11 @@
 """Brute-force accounting: strikes per IP in a sliding window; bans climb a ladder for repeat offenders."""
+import functools
 import ipaddress
 
 from . import config
 
-_nets_cache = (None, [])
 
-
+@functools.lru_cache(maxsize=8192)
 def normalize(ip):
     try:
         addr = ipaddress.ip_address(ip)
@@ -17,11 +17,18 @@ def normalize(ip):
 
 
 def is_trusted(ip):
-    global _nets_cache
-    if _nets_cache[0] != config.TRUSTED_NETS:
-        _nets_cache = (list(config.TRUSTED_NETS), [ipaddress.ip_network(n) for n in config.TRUSTED_NETS])
+    return _trusted(ip, tuple(config.TRUSTED_NETS))
+
+
+@functools.lru_cache(maxsize=8192)
+def _trusted(ip, nets):
     addr = ipaddress.ip_address(ip)
-    return any(addr in net for net in _nets_cache[1])
+    return any(addr in net for net in _networks(nets))
+
+
+@functools.lru_cache(maxsize=4)
+def _networks(nets):
+    return [ipaddress.ip_network(n) for n in nets]
 
 
 class Guard:

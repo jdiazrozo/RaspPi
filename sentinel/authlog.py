@@ -8,14 +8,15 @@ _IP = r'(?P<ip>[0-9A-Fa-f:.]+)'
 # Anchored at end of line and with greedy user groups: a username like "x from 10.0.0.1 port 1"
 # cannot redirect the strike to an IP of the attacker's choosing.
 _TAIL = r' port \d+(?: ssh2)?(?: \[preauth\])?$'
-SSHD_FAILS = [re.compile(p) for p in (
-    r'Failed \S+ for (?:invalid user )?(?P<user>.*) from ' + _IP + _TAIL,
-    r'Invalid user (?P<user>.*) from ' + _IP + _TAIL,
-    r'(?:Connection closed by|Disconnected from) authenticating user (?P<user>.*) ' + _IP + _TAIL,
-    r'maximum authentication attempts exceeded for (?:invalid user )?(?P<user>.*) from ' + _IP + _TAIL,
-    r'Did not receive identification string from ' + _IP + _TAIL,
-    r'Bad protocol version identification .* from ' + _IP + _TAIL,
-    r'Unable to negotiate with ' + _IP + r' port \d+: no matching ',
+# (keyword, regex): the substring test skips regexes that cannot match, e.g. on the pam_unix lines.
+SSHD_FAILS = [(k, re.compile(p)) for k, p in (
+    ('Failed ', r'Failed \S+ for (?:invalid user )?(?P<user>.*) from ' + _IP + _TAIL),
+    ('Invalid user ', r'Invalid user (?P<user>.*) from ' + _IP + _TAIL),
+    ('authenticating user ', r'(?:Connection closed by|Disconnected from) authenticating user (?P<user>.*) ' + _IP + _TAIL),
+    ('maximum authentication', r'maximum authentication attempts exceeded for (?:invalid user )?(?P<user>.*) from ' + _IP + _TAIL),
+    ('Did not receive', r'Did not receive identification string from ' + _IP + _TAIL),
+    ('Bad protocol', r'Bad protocol version identification .* from ' + _IP + _TAIL),
+    ('Unable to negotiate', r'Unable to negotiate with ' + _IP + r' port \d+: no matching '),
 )]
 SSHD_ACCEPT = re.compile(r'Accepted (?P<method>\S+) for (?P<user>.*) from ' + _IP
                          + r' port \d+ ssh2(?:: \S+ \S+)?$')
@@ -26,12 +27,12 @@ SU_FAIL = re.compile(r'su(?:\[\d+\])?: FAILED SU \(to (?P<target>\S+)\) (?P<user
 def parse_line(line):
     line = line.rstrip()
     if ' sshd[' in line:
-        m = SSHD_ACCEPT.search(line)
+        m = 'Accepted ' in line and SSHD_ACCEPT.search(line)
         if m:
             ip = normalize(m.group('ip'))
             return ('accept', ip, m.group('user'), m.group('method')) if ip else None
-        for rx in SSHD_FAILS:
-            m = rx.search(line)
+        for keyword, rx in SSHD_FAILS:
+            m = keyword in line and rx.search(line)
             if m:
                 ip = normalize(m.group('ip'))
                 user = m.groupdict().get('user')

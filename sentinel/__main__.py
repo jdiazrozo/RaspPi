@@ -49,10 +49,15 @@ def main():
         Agent(unknown).run()
 
 
+MONTHS = {m: i + 1 for i, m in enumerate('Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split())}
+
+
 def _syslog_time(line, now):
+    # strptime was 60% of replay time on the Pi
     try:
-        t = datetime.strptime(line[:15], '%b %d %H:%M:%S').replace(year=now.year)
-    except ValueError:
+        t = datetime(now.year, MONTHS[line[:3]], int(line[4:6]),
+                     int(line[7:9]), int(line[10:12]), int(line[13:15]))
+    except (KeyError, ValueError):
         return None
     if t > now:
         t = t.replace(year=now.year - 1)
@@ -80,11 +85,10 @@ def replay(paths):
                     guard.expired(ts)
                 elif event[0] == 'accept':
                     logins.append((line[:15], event, guard.pending(event[1])))
-    print('failed-auth events: %d from %d IPs; %d bans by %d IPs'
-          % (fails, len(ips), len(bans), len({b['ip'] for b in bans})))
-    print('IPs that never reached the ban limit: %d (they made %d of the events)'
-          % (sum(1 for ip in ips if ip not in {b['ip'] for b in bans}),
-             sum(n for ip, n in ips.items() if ip not in {b['ip'] for b in bans})))
+    banned = {b['ip'] for b in bans}
+    unbanned = [n for ip, n in ips.items() if ip not in banned]
+    print('failed-auth events: %d from %d IPs; %d bans by %d IPs' % (fails, len(ips), len(bans), len(banned)))
+    print('IPs that never reached the ban limit: %d (they made %d of the events)' % (len(unbanned), sum(unbanned)))
     print('top sources: ' + ', '.join('%s x%d' % kv for kv in ips.most_common(5)))
     print('successful logins (%d):' % len(logins))
     for when, (_, ip, user, method), pending in logins:
