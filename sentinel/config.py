@@ -64,8 +64,6 @@ LAN_SWEEP_SECONDS = 3600
 LAN_DECOY_PORTS = [23, 2323, 3389, 5900]
 ARP_SCAN_TARGETS = 30
 LAN_SCAN_ALLOW = []  # MACs allowed to sweep the network (e.g. a NAS or Home Assistant)
-# Blocked devices are also told the router is at the Pi's MAC (NetCut-style), cutting their internet.
-LAN_CUTOFF = True
 
 
 def apply_overrides(path=None):
