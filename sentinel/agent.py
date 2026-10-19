@@ -5,7 +5,10 @@ import time
 import traceback
 from datetime import datetime
 
+import json
+
 from . import alerts, config, firewall, state as store
+from .bot import Bot
 from .authlog import LogTail, parse_line
 from .guard import Guard, is_trusted
 from .integrity import Integrity
@@ -37,7 +40,11 @@ class Agent:
         self.state = store.load(self.path)
         self.saved = store.dumps(self.state)
         env = alerts.read_env(config.ENV_FILE)
-        self.notify = alerts.Notifier(env.get('telegram_key'), env.get('chat_id'), config.ALERT_COOLDOWN)
+        bot_key = env.get('sentinel_bot_key')
+        self.shared_bot = bool(bot_key) and bot_key == env.get('telegram_key')
+        self.bot = Bot(bot_key, env.get('chat_id')) if bot_key and not self.shared_bot else None
+        self.naming = {}
+        self.notify = alerts.Notifier(bot_key or env.get('telegram_key'), env.get('chat_id'), config.ALERT_COOLDOWN)
         self.first_start = self.state.setdefault('first_start', time.time())
         self.guard = Guard(self.state)
         self.integrity = Integrity(self.state)
@@ -79,6 +86,12 @@ class Agent:
             self.notify.alert('🏠 Home network: learning your devices until %s' % until.strftime('%d/%m %H:%M'))
         for problem in self.lan.open() + self.blocklist.setup():
             self.notify.alert('⚙️ ' + problem)
+        for mac in self.lan.reapply_blocks():
+            self.notify.alert('⚙️ Could not re-apply the block on ' + self.lan.label(mac))
+        if self.bot:
+            self.bot.start()
+        elif self.shared_bot:
+            self.notify.alert('⚙️ sentinel_bot_key is the same bot as telebot: buttons disabled, create a separate bot')
         if not os.path.exists(config.AUTH_LOG):
             self.notify.alert('⚙️ %s not found - SSH brute-force detection is blind' % config.AUTH_LOG)
         if self.unknown_keys:
@@ -92,6 +105,8 @@ class Agent:
             now = time.time()
             self._guarded('auth log', self._auth, now)
             self._guarded('home network', self._lan, now)
+            if self.bot:
+                self._guarded('telegram', self._telegram, now)
             if now >= next_scan:
                 self.scan(now)
                 next_scan = now + config.SCAN_SECONDS
@@ -114,7 +129,79 @@ class Agent:
 
     def _lan(self, now):
         for key, text in self.lan.poll(now):
+            if key.startswith('device:'):
+                if self._ask_device(key[7:], text):
+                    continue
+                text += '\nsudo sentinel --trust %s  (or --block)' % key[7:]
             self.notify.alert(text, key=key, now=now)
+
+    def _ask_device(self, mac, text):
+        if not self.bot:
+            return False
+        buttons = [[{'text': '✅ Trust', 'callback_data': 'trust:' + mac},
+                    {'text': '🚫 Block', 'callback_data': 'block:' + mac}]]
+        return self.bot.call('sendMessage', text=text, reply_markup={'inline_keyboard': buttons}) is not None
+
+    def device_action(self, action, token):
+        mac = self.lan.resolve(token)
+        if mac is None:
+            return 'Unknown device: %s (see /devices)' % token
+        status = 'blocked' if action == 'block' else 'trusted'
+        error = self.lan.set_status(mac, status)
+        if error:
+            return '⚙️ %s: %s' % (self.lan.label(mac), error)
+        if status == 'trusted':
+            return '✅ %s trusted' % self.lan.label(mac)
+        return ('🚫 %s blocked: no access to the Pi, and cut off from the internet while the Pi is on (best effort). '
+                'For good: block its MAC in the router or change the Wi-Fi password.' % self.lan.label(mac))
+
+    def _telegram(self, now):
+        for update in self.bot.drain():
+            cb = update.get('callback_query')
+            if cb:
+                msg = cb.get('message') or {}
+                action, _, mac = (cb.get('data') or '').partition(':')
+                reply = self.device_action(action, mac)
+                self.bot.call('answerCallbackQuery', callback_query_id=cb['id'], text=reply[:190])
+                self.bot.call('editMessageText', message_id=msg.get('message_id'),
+                              text='%s\n→ %s' % (msg.get('text', ''), reply))
+                if action == 'trust' and reply.startswith('✅'):
+                    ask = self.bot.call('sendMessage', text='Name for %s? Reply to this message, e.g. "Javi iPhone".' % mac,
+                                        reply_markup={'force_reply': True})
+                    if ask:
+                        self.naming[ask['message_id']] = mac
+                continue
+            msg = update.get('message') or {}
+            text = (msg.get('text') or '').strip()
+            replied = (msg.get('reply_to_message') or {}).get('message_id')
+            if replied in self.naming:
+                mac = self.naming.pop(replied)
+                self.lan.rename(mac, text)
+                answer = '🏷 Saved: ' + self.lan.label(mac)
+            else:
+                answer = self.command(text)
+            self.bot.call('sendMessage', text=answer)
+
+    def command(self, text):
+        parts = text.split(None, 2)
+        cmd = parts[0].split('@')[0].lower() if parts else ''
+        if cmd == '/devices':
+            return self.lan.listing()
+        if cmd in ('/trust', '/block', '/unblock') and len(parts) > 1:
+            return self.device_action(cmd[1:], ' '.join(parts[1:]))
+        if cmd == '/name' and len(parts) == 3:
+            mac = self.lan.resolve(parts[1])
+            if mac is None:
+                return 'Unknown device: ' + parts[1]
+            self.lan.rename(mac, parts[2])
+            return '🏷 Saved: ' + self.lan.label(mac)
+        if cmd == '/status':
+            return '%s. %d IPs banned, %d known attackers blocked in advance.' % (
+                'Learning mode' if self.learning else 'Full detection', len(self.guard.bans),
+                self.state.get('blocklist_size', 0))
+        return ('/devices - devices on your network (✅ trusted, ❔ waiting for review, 🚫 blocked)\n'
+                '/trust X, /block X, /unblock X - X is a MAC, its last digits, or a name\n'
+                '/name X New name\n/status - bans and mode')
 
     def handle(self, event, now):
         kind = event[0]
@@ -179,6 +266,19 @@ class Agent:
             os.remove(request_file('accept-gateway'))
             self.state.pop('gateway_mac', None)
             self.notify.alert('✅ Router MAC forgotten; the next one seen is trusted', now=now)
+        path = request_file('requests')
+        if os.path.exists(path):
+            with open(path) as f:
+                lines = f.read().splitlines()
+            os.remove(path)
+            for line in lines:
+                req = json.loads(line)
+                if req['op'] == 'name':
+                    mac = self.lan.resolve(req['device'])
+                    if mac:
+                        self.lan.rename(mac, req['name'])
+                else:
+                    self.notify.alert(self.device_action(req['op'], req['device']), now=now)
         path = request_file('unban')
         if not os.path.exists(path):
             return
@@ -213,6 +313,9 @@ class Agent:
             intel += ' %d known attackers blocked in advance.' % self.state.get('blocklist_size', 0)
         if self.reporter.key:
             intel += ' %d reported to AbuseIPDB.' % s.get('reported', 0)
+        waiting = sum(1 for mac in self.lan.devices if self.lan.status(mac) == 'new')
+        if waiting:
+            intel += ' %d new devices waiting for your review (/devices).' % waiting
         self.notify.alert('☀️ Daily report: %d failed logins, %d bans, %d IPs banned now.%s %s. '
                           'Agent footprint: %s RSS, %.0fs CPU since start.'
                           % (s['strikes'], s['bans'], len(self.guard.bans), intel,

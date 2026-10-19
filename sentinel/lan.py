@@ -1,4 +1,5 @@
-"""Home network watch: device inventory, router impersonation and network scans from ARP, plus decoy ports.
+"""Home network watch: device inventory, router impersonation and network scans from ARP, decoy ports,
+and trusting/blocking devices.
 
 The kernel hands us only ARP frames (ethertype filter on the socket), so this costs next to nothing.
 """
@@ -11,13 +12,14 @@ try:
 except ImportError:  # Windows dev box
     fcntl = None
 
-from . import config
+from . import config, firewall
 
 ETH_P_ARP = 0x0806
 SIOCGIFADDR, SIOCGIFNETMASK = 0x8915, 0x891b
 BROADCAST = b'\xff' * 6
 SCAN_WINDOW = 60
 LAST_SEEN_STEP = 3600  # coarse last-seen keeps state writes (SD wear) rare
+ICONS = {'trusted': '✅', 'new': '❔', 'blocked': '🚫'}
 
 
 def mac_str(raw):
@@ -36,6 +38,17 @@ def parse_arp(frame):
 def arp_request(my_mac, my_ip, target):
     return (BROADCAST + my_mac + b'\x08\x06' + struct.pack('!HHBBH', 1, 0x0800, 6, 4, 1)
             + my_mac + socket.inet_aton(my_ip) + b'\0' * 6 + socket.inet_aton(target))
+
+
+def arp_reply(my_mac, claimed_ip, dst_mac, dst_ip):
+    return (dst_mac + my_mac + b'\x08\x06' + struct.pack('!HHBBH', 1, 0x0800, 6, 4, 2)
+            + my_mac + socket.inet_aton(claimed_ip) + dst_mac + socket.inet_aton(dst_ip))
+
+
+def mac_rule(op, tool, mac):
+    """raw/PREROUTING: dropped before routing, so a blocked device can't use the Pi as a router either."""
+    where = ['PREROUTING', '1'] if op == '-I' else ['PREROUTING']
+    return [tool, '-w', '-t', 'raw', op] + where + ['-m', 'mac', '--mac-source', mac, '-j', 'DROP']
 
 
 def randomized(mac):
@@ -111,11 +124,12 @@ class LanWatch:
             arp = parse_arp(frame)
             if arp:
                 findings += self.handle(arp, now)
+        self.cut_off()
         return findings
 
     def _who(self, ip):
         macs = [mac for mac, d in self.devices.items() if d.get('ip') == ip]
-        return ' (%s)' % macs[0] if macs else ''
+        return ' (%s)' % self.label(macs[0]) if macs else ''
 
     def handle(self, arp, now):
         oper, mac, ip, target = arp
@@ -133,8 +147,10 @@ class LanWatch:
         local = ip != '0.0.0.0' and (self.net is None or ipaddress.ip_address(ip) in self.net)
         dev = self.devices.get(mac)
         if dev is None:
-            self.devices[mac] = {'ip': ip if local else None, 'first': now, 'last': now}
-            if not self.learning(now):
+            learning = self.learning(now)
+            self.devices[mac] = {'ip': ip if local else None, 'first': now, 'last': now,
+                                 'status': 'trusted' if learning else 'new'}
+            if not learning:
                 out.append(('device:' + mac, '📱 New device on your network: %s%s at %s'
                             % (mac, ' (private MAC: phone/tablet)' if randomized(mac) else '', ip if local else 'no IP yet')))
         else:
@@ -152,6 +168,69 @@ class LanWatch:
                     out.append(('arpscan:' + mac, '🔎 %s (%s) is scanning your network: it looked for %d addresses '
                                 'in a minute' % (mac, ip, len(seen))))
         return out
+
+    def status(self, mac):
+        return self.devices.get(mac, {}).get('status', 'trusted')
+
+    def label(self, mac):
+        name = self.devices.get(mac, {}).get('name')
+        return '%s (%s)' % (name, mac) if name else mac
+
+    def resolve(self, token):
+        """A full MAC, its last few hex digits, or a device name."""
+        token = token.strip().lower()
+        if token in self.devices:
+            return token
+        hexed = token.replace(':', '').replace('-', '')
+        hits = [m for m, d in self.devices.items()
+                if (hexed and m.replace(':', '').endswith(hexed)) or (d.get('name') or '').lower() == token]
+        return hits[0] if len(hits) == 1 else None
+
+    def rename(self, mac, name):
+        self.devices[mac]['name'] = name.strip()[:40]
+
+    def set_status(self, mac, status):
+        """Returns an error message, or None."""
+        if mac not in self.devices:
+            return 'unknown device'
+        if status == 'blocked' and mac in (self.my_mac, self.state.get('gateway_mac')):
+            return 'refusing to block the Pi itself or the router'
+        old = self.status(mac)
+        if status == 'blocked':
+            for tool in firewall.TOOLS:
+                if not (firewall._run(mac_rule('-C', tool, mac)) or firewall._run(mac_rule('-I', tool, mac))):
+                    if tool == 'iptables':
+                        return 'firewall rule failed (is the iptables raw table available?)'
+        elif old == 'blocked':
+            for tool in firewall.TOOLS:
+                while firewall._run(mac_rule('-D', tool, mac)):
+                    pass
+        self.devices[mac]['status'] = status
+        return None
+
+    def reapply_blocks(self):
+        """Firewall rules don't survive a reboot; the state does."""
+        return [mac for mac in self.devices if self.status(mac) == 'blocked' and self.set_status(mac, 'blocked')]
+
+    def cut_off(self):
+        """Tell each blocked device the router lives at our MAC; raw/PREROUTING then drops what it sends."""
+        if self.sock is None or not config.LAN_CUTOFF or not self.my_mac:
+            return
+        mine = bytes.fromhex(self.my_mac.replace(':', ''))
+        for mac, d in self.devices.items():
+            if d.get('status') == 'blocked' and d.get('ip'):
+                try:
+                    self.sock.send(arp_reply(mine, config.GATEWAY_IP, bytes.fromhex(mac.replace(':', '')), d['ip']))
+                except OSError:
+                    return
+
+    def listing(self):
+        def ip_key(item):
+            return tuple(int(p) for p in (item[1].get('ip') or '0.0.0.0').split('.'))
+        lines = ['%s %-15s %s%s' % (ICONS.get(self.status(mac), '?'), d.get('ip') or '-', self.label(mac),
+                                     '  [router]' if mac == self.state.get('gateway_mac') else '')
+                 for mac, d in sorted(self.devices.items(), key=ip_key)]
+        return '\n'.join(lines) or 'no devices seen yet'
 
     def sweep(self, now):
         """Hourly ARP sweep so quiet devices also make it into the inventory."""

@@ -1,6 +1,7 @@
 """python3 -m sentinel [--status | --devices | --unban IP | --accept-gateway | --test-alert | --replay LOG...]"""
 import argparse
 import gzip
+import json
 import os
 import sys
 import time
@@ -18,6 +19,9 @@ def main():
     ap.add_argument('--status', action='store_true', help='show bans and mode')
     ap.add_argument('--unban', metavar='IP', help='lift a ban (applied by the running agent within a minute)')
     ap.add_argument('--devices', action='store_true', help='list devices seen on the home network')
+    ap.add_argument('--trust', metavar='DEVICE', help='trust a home-network device (MAC, last digits or name)')
+    ap.add_argument('--block', metavar='DEVICE', help='block a home-network device')
+    ap.add_argument('--name', nargs=2, metavar=('DEVICE', 'NAME'), help='name a home-network device')
     ap.add_argument('--accept-gateway', action='store_true', help='trust a new router MAC (after replacing the router)')
     ap.add_argument('--test-alert', action='store_true', help='send a Telegram test message')
     ap.add_argument('--replay', nargs='+', metavar='LOG', help='dry-run old auth logs (oldest first, .gz ok)')
@@ -26,6 +30,12 @@ def main():
 
     if args.replay:
         replay(args.replay)
+    elif args.trust or args.block or args.name:
+        req = ({'op': 'trust', 'device': args.trust} if args.trust else {'op': 'block', 'device': args.block}
+               if args.block else {'op': 'name', 'device': args.name[0], 'name': args.name[1]})
+        with open(os.path.join(config.STATE_DIR, 'requests'), 'a') as f:
+            f.write(json.dumps(req) + '\n')
+        print('queued; the running agent applies it within a minute')
     elif args.accept_gateway:
         open(os.path.join(config.STATE_DIR, 'accept-gateway'), 'w').close()
         print('queued: the running agent forgets the router MAC within a minute')
@@ -63,11 +73,12 @@ MONTHS = {m: i + 1 for i, m in enumerate('Jan Feb Mar Apr May Jun Jul Aug Sep Oc
 def devices(state):
     gateway = state.get('gateway_mac')
     rows = sorted(state.get('lan_devices', {}).items(), key=lambda kv: tuple(int(p) for p in (kv[1]['ip'] or '0.0.0.0').split('.')))
-    print('%-17s  %-15s  %-16s  %s' % ('MAC', 'IP', 'first seen', 'last seen'))
+    print('%-8s %-17s  %-15s  %-20s  %-14s  %s' % ('status', 'MAC', 'IP', 'name', 'first seen', 'last seen'))
     for mac, d in rows:
         fmt = lambda ts: datetime.fromtimestamp(ts).strftime('%d/%m/%y %H:%M')
         note = '  router' if mac == gateway else ('  private MAC' if randomized(mac) else '')
-        print('%-17s  %-15s  %-16s  %s%s' % (mac, d['ip'] or '-', fmt(d['first']), fmt(d['last']), note))
+        print('%-8s %-17s  %-15s  %-20s  %-14s  %s%s' % (d.get('status', 'trusted'), mac, d['ip'] or '-',
+                                                       d.get('name', '')[:20], fmt(d['first']), fmt(d['last']), note))
 
 
 def _syslog_time(line, now):
