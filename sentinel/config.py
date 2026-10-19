@@ -49,6 +49,14 @@ CPU_ALERT_MINUTES = 15
 CPU_ALLOW = ['raspitrader.py', 'apt', 'dpkg', 'unattended-upgr', 'minidlnad', 'rsync', 'tar', 'gzip', 'git']
 SUSPICIOUS_PORTS = [3333, 4444, 5555, 6666, 7777, 14433, 14444, 45560, 45700]
 
+# Known attackers, refreshed daily into an ipset and dropped before their first try. Needs: sudo apt install ipset
+BLOCKLIST_URLS = ['https://lists.blocklist.de/lists/ssh.txt']
+BLOCKLIST_REFRESH = 86400
+# Only new connections to these ports, so the VPN still works if your own mobile IP ever gets listed.
+BLOCKLIST_PORTS = [22]
+# With abuseipdb_key=... in ENV_FILE: report every ban, and add their blacklist to the blocklist.
+ABUSEIPDB_REPORT = True
+
 LAN_INTERFACE = 'eth0'
 GATEWAY_IP = '192.168.1.1'
 LAN_SWEEP_SECONDS = 3600

@@ -9,6 +9,7 @@ from . import alerts, config, firewall, state as store
 from .authlog import LogTail, parse_line
 from .guard import Guard, is_trusted
 from .integrity import Integrity
+from .intel import Blocklist, Reporter
 from .lan import LanWatch
 from .netwatch import NetWatch
 from .procwatch import ProcWatch
@@ -43,6 +44,8 @@ class Agent:
         self.net = NetWatch(self.state)
         self.procs = ProcWatch(self.state)
         self.lan = LanWatch(self.state, time.time())
+        self.blocklist = Blocklist(self.state, config.STATE_DIR, env.get('abuseipdb_key'))
+        self.reporter = Reporter(env.get('abuseipdb_key'))
         self.login_ips = self.state.setdefault('login_ips', {})
         log = self.state.get('authlog', {})
         self.tail = LogTail(config.AUTH_LOG, log.get('inode'), log.get('offset'))
@@ -74,7 +77,7 @@ class Agent:
         if self.lan.learning(now):
             until = datetime.fromtimestamp(self.lan.first_start + config.LEARNING_HOURS * 3600)
             self.notify.alert('🏠 Home network: learning your devices until %s' % until.strftime('%d/%m %H:%M'))
-        for problem in self.lan.open():
+        for problem in self.lan.open() + self.blocklist.setup():
             self.notify.alert('⚙️ ' + problem)
         if not os.path.exists(config.AUTH_LOG):
             self.notify.alert('⚙️ %s not found - SSH brute-force detection is blind' % config.AUTH_LOG)
@@ -122,6 +125,7 @@ class Agent:
             if ban:
                 self.stats()['bans'] += 1
                 ok = firewall.ban(ip)
+                self.reporter.add(ip, ban['strikes'], ban['users'])
                 if ok and not config.BAN_ALERTS:
                     return
                 users = ', '.join(u[:20] for u in ban['users'][:5]) or '-'
@@ -162,6 +166,7 @@ class Agent:
                 self.notify.alert(text, key=key, now=now)
         self._guarded('ban expiry', self._expire, now)
         self._guarded('network sweep', self.lan.sweep, now)
+        self._guarded('threat intel', self._intel, now)
         self._guarded('heartbeat', self._heartbeat, now)
         self._guarded('daily summary', self._summary, now)
         self.save()
@@ -185,6 +190,12 @@ class Agent:
             firewall.unban(ip)
             self.notify.alert('✅ Unbanned %s (manual request)' % ip, now=now)
 
+    def _intel(self, now):
+        self.blocklist.refresh(now)
+        sent = self.reporter.flush(now)
+        if sent:
+            self.stats()['reported'] = self.stats().get('reported', 0) + sent
+
     def _heartbeat(self, now):
         if config.HEARTBEAT_URL and now - self.last_heartbeat >= config.HEARTBEAT_SECONDS:
             alerts.ping(config.HEARTBEAT_URL)
@@ -197,9 +208,14 @@ class Agent:
         self.state['summary_day'] = today
         s = self.stats()
         cpu = sum(os.times()[:2])
-        self.notify.alert('☀️ Daily report: %d failed logins, %d bans, %d IPs banned now. %s. '
+        intel = ''
+        if self.blocklist.ready:
+            intel += ' %d known attackers blocked in advance.' % self.state.get('blocklist_size', 0)
+        if self.reporter.key:
+            intel += ' %d reported to AbuseIPDB.' % s.get('reported', 0)
+        self.notify.alert('☀️ Daily report: %d failed logins, %d bans, %d IPs banned now.%s %s. '
                           'Agent footprint: %s RSS, %.0fs CPU since start.'
-                          % (s['strikes'], s['bans'], len(self.guard.bans),
+                          % (s['strikes'], s['bans'], len(self.guard.bans), intel,
                              'Learning mode' if self.learning else 'Full detection', _rss(), cpu), now=now)
         self.state['stats'] = {'strikes': 0, 'bans': 0, 'since': now}
 
