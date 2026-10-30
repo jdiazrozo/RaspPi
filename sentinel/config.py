@@ -10,7 +10,7 @@ TICK_SECONDS = 5
 SCAN_SECONDS = 60
 LEARNING_HOURS = 72
 ALERT_COOLDOWN = 3600
-SUMMARY_HOUR = 9
+SUMMARY_HOUR = 7
 # Dead-man switch off the Pi (e.g. https://hc-ping.com/<uuid>): a silent Pi raises the alarm there.
 HEARTBEAT_URL = ''
 HEARTBEAT_SECONDS = 300
