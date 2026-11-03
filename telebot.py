@@ -497,4 +497,8 @@ send("✅ Pagola RasPi Telebot is back online.")
 bot.message_loop(handle)
 
 while 1:
-    time.sleep(10)
+    time.sleep(60)
+    try:
+        comms_telegram.flush_outbox()  # raspitrader's messages kept while Telegram was down
+    except Exception as e:
+        print(f"[WARN] Outbox flush failed: {e}")
